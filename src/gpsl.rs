@@ -12,6 +12,7 @@ pub struct GPSL {
     pub l_vars: HashMap<String, LocalVariable>,
     pub assembly: String,
     pub offset_size: usize,
+    pub external_func: fn(String, Vec<Variable>) -> Option<Variable>
 }
 
 pub struct LocalVariable {
@@ -31,12 +32,13 @@ impl VariableStatus {
 }
 
 impl GPSL {
-    pub fn new(source: Source) -> GPSL {
+    pub fn new(source: Source, external_func: fn(String, Vec<Variable>) -> Option<Variable>) -> GPSL {
         GPSL {
             source,
             l_vars: HashMap::new(),
             assembly: String::from(""),
             offset_size: 0,
+            external_func
         }
     }
 
@@ -53,6 +55,16 @@ impl GPSL {
 
     pub fn evaluate(&mut self, node: Box<Node>) -> Result<Option<Variable>, String> {
         match *node {
+            Node::Call { name, args } => {
+                let f = self.external_func;
+                let mut args_value: Vec<Variable> = vec![];
+                for arg in args {
+                    if let Some(val) = self.evaluate(arg).expect("Cannot evaluate") {
+                        args_value.push(val);
+                    }
+                }
+                Ok(f(name, args_value))
+            }
             Node::Text { value } => {
                 Ok(Some(Variable::Text {
                     value

@@ -243,10 +243,10 @@ impl Parser {
             let node = self.tokenizer.expect_ident()?;
             if self.tokenizer.consume(String::from("(")) {
               self.tokenizer.expect(String::from(")"))?;
-              return Ok(Node::Call {
+              return Ok(Box::new(Node::Call {
                 name: node.clone(),
                 args: vec![],
-              })
+              }))
             }
             return Ok(Node::new_lvar_node(node.clone()));
         }
