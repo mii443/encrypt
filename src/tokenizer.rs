@@ -125,6 +125,8 @@ impl Tokenizer {
             String::from("="),
             String::from(";"),
             String::from(":"),
+            String::from(","),
+            String::from("\""),
         ];
 
         let controls: Vec<String> = vec![
@@ -135,6 +137,22 @@ impl Tokenizer {
         ];
 
         while source.has_next() {
+            match source.get_char(is('"')) {
+                Ok(_) => {
+                    let text = match source.get_chars(not(is('"'))) {
+                        Ok(t) => t,
+                        Err(_) => String::from(""),
+                    };
+                    source.get_char(is('"'));
+                    self.tokens.push(Token {
+                        kind: TokenKind::TEXT,
+                        str: text,
+                        num: 0
+                    });
+                    continue;
+                }
+                Err(_) => {}
+            }
             match source.get_char(is_whitespace) {
                 Ok(_) => {
                     continue;
@@ -217,6 +235,10 @@ fn or(f: impl Fn(char) -> bool, g: impl Fn(char) -> bool) -> impl Fn(char) -> bo
 
 fn is(ch: char) -> impl Fn(char) -> bool {
     move |c| c == ch
+}
+
+fn not(f: impl Fn(char) -> bool) -> impl Fn(char) -> bool {
+    move |c| !f(c)
 }
 
 fn is_whitespace(c: char) -> bool {

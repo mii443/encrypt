@@ -7,12 +7,24 @@ use std::collections::HashMap;
 use std::string::*;
 use uuid::Uuid;
 
+#[derive(PartialEq)]
+pub enum ExternalFuncStatus {
+    SUCCESS,
+    NOTFOUND,
+    ERROR,
+}
+
+pub struct ExternalFuncReturn {
+    pub status: ExternalFuncStatus,
+    pub value: Option<Variable>
+}
+
 pub struct GPSL {
     pub source: Source,
     pub l_vars: HashMap<String, LocalVariable>,
     pub assembly: String,
     pub offset_size: usize,
-    pub external_func: fn(String, Vec<Variable>) -> Option<Variable>
+    pub external_func: Vec<fn(String, Vec<Variable>) -> ExternalFuncReturn>
 }
 
 pub struct LocalVariable {
@@ -32,7 +44,7 @@ impl VariableStatus {
 }
 
 impl GPSL {
-    pub fn new(source: Source, external_func: fn(String, Vec<Variable>) -> Option<Variable>) -> GPSL {
+    pub fn new(source: Source, external_func: Vec<fn(String, Vec<Variable>) -> ExternalFuncReturn>) -> GPSL {
         GPSL {
             source,
             l_vars: HashMap::new(),
@@ -56,14 +68,22 @@ impl GPSL {
     pub fn evaluate(&mut self, node: Box<Node>) -> Result<Option<Variable>, String> {
         match *node {
             Node::Call { name, args } => {
-                let f = self.external_func;
+                let f = self.external_func.clone();
                 let mut args_value: Vec<Variable> = vec![];
                 for arg in args {
                     if let Some(val) = self.evaluate(arg).expect("Cannot evaluate") {
                         args_value.push(val);
                     }
                 }
-                Ok(f(name, args_value))
+
+                for func in f {
+                    let res = func(name.clone(), args_value.clone());
+                    if res.status == ExternalFuncStatus::SUCCESS {
+                        return Ok(res.value);
+                    }
+                }
+
+                Err(format!("Function not found: {}", name))
             }
             Node::Text { value } => {
                 Ok(Some(Variable::Text {

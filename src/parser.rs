@@ -242,13 +242,27 @@ impl Parser {
         if self.tokenizer.current_token().kind == TokenKind::IDENT {
             let node = self.tokenizer.expect_ident()?;
             if self.tokenizer.consume(String::from("(")) {
-              self.tokenizer.expect(String::from(")"))?;
-              return Ok(Box::new(Node::Call {
-                name: node.clone(),
-                args: vec![],
-              }))
+                let mut args: Vec<Box<Node>> = vec![];
+                while self.tokenizer.current_token().str != ")" {
+                    args.push(self.unary()?);
+                    self.tokenizer.consume(String::from(","));
+                }
+                
+                self.tokenizer.expect(String::from(")"))?;
+                return Ok(Box::new(Node::Call {
+                  name: node.clone(),
+                  args: args,
+                }))
             }
             return Ok(Node::new_lvar_node(node.clone()));
+        }
+
+        if self.tokenizer.current_token().kind == TokenKind::TEXT {
+            let text = self.tokenizer.current_token().str.clone();
+            self.tokenizer.consume_kind(TokenKind::TEXT);
+            return Ok(Box::new(Node::Text {
+                value: text,
+            }));
         }
 
         return Ok(Node::new_num_node(self.tokenizer.expect_number()?));

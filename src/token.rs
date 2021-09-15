@@ -6,6 +6,7 @@ pub enum TokenKind {
     IDENT,
     NUMBER,
     EOF,
+    TEXT,
 }
 
 #[derive(Clone, Debug)]
