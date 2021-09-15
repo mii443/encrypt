@@ -52,6 +52,10 @@ pub enum Node {
         name: String,
         var_type: String,
     },
+    Call {
+      name: String,
+      args: Vec<Box<Node>>,
+    }
 }
 
 impl Node {
