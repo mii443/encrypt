@@ -12,3 +12,12 @@ pub struct EllipticCurvePoint {
     pub y: FiniteFieldElement
 }
 
+impl EllipticCurve {
+    pub fn add(lhs: EllipticCurvePoint, rhs: EllipticCurvePoint) -> EllipticCurvePoint {
+        lhs
+    }
+
+    fn add_phi(a: EllipticCurvePoint, b: EllipticCurvePoint) -> FiniteFieldElement {
+        
+    }
+}
