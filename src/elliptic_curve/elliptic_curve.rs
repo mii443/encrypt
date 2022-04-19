@@ -45,10 +45,15 @@ impl EllipticCurve {
             (phi, psi)
         };
 
+        println!("{}, {}", phi, psi);
+
+        let x = phi.clone() * phi.clone() - lhs.x.clone() - rhs.x.clone();
+        let y = - phi * x.clone() - psi;
+
         EllipticCurvePoint {
-            x: phi.clone() * phi - lhs.x.clone() - rhs.x.clone(),
-            y: todo!(),
-            infinity: todo!(), 
+            x,
+            y,
+            infinity: false
         }
     }
 
