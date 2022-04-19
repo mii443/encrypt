@@ -1,4 +1,4 @@
-use std::{ops::{Add, Sub, Mul}, fmt::{self, Display}};
+use std::{ops::{Add, Sub, Mul, Div, Neg}, fmt::{self, Display}};
 
 use bigdecimal::{BigDecimal, Zero};
 
@@ -16,10 +16,17 @@ macro_rules! ffe {
     };
 }
 
+#[macro_export]
+macro_rules! ffeb {
+    ( $value: expr, $p: expr ) => {
+        FiniteFieldElement::new($value, $p)
+    };
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct FiniteFieldElement {
     pub value: BigDecimal,
-    p: BigDecimal
+    pub p: BigDecimal
 }
 
 fn pmod(x: BigDecimal, y: BigDecimal) -> BigDecimal {
@@ -70,6 +77,22 @@ impl Mul for FiniteFieldElement {
             panic!("p doesn't match: {} != {}", self.p, rhs.p);
         }
         Self::new(self.value * rhs.value, self.p)
+    }
+}
+
+impl Div for FiniteFieldElement {
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        Self::new(self.value / rhs.value, self.p)
+    }
+}
+
+impl Neg for FiniteFieldElement {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Self::new(-self.value, self.p)
     }
 }
 
