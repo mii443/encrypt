@@ -1,1 +1,1 @@
-gpsl
+# General Purpose Simple Language
