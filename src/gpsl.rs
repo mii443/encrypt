@@ -332,7 +332,7 @@ impl GPSL {
                         value: 0
                     }
                 };
-                
+
                 while match cond {
                     Variable::Number { value } => value == 1,
                     _ => false
