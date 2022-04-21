@@ -2,6 +2,8 @@ use std::{ops::{Add, Sub, Mul, Div, Neg}, fmt::{self, Display}};
 
 use bigdecimal::{BigDecimal, Zero};
 
+use super::math::{self, modInv, plusMod};
+
 #[macro_export]
 macro_rules! b {
     ( $x: expr ) => {
@@ -41,6 +43,19 @@ impl FiniteFieldElement {
     pub fn new(value: BigDecimal, p: BigDecimal) -> Self {
         Self { value: pmod(value, p.clone()), p }
     }
+
+    pub fn floor_div(self, rhs: FiniteFieldElement) -> Self {
+        self * FiniteFieldElement { value: modInv(rhs.value, self.p.clone()), p:  self.p }
+    }
+
+    pub fn rem(self, rhs: FiniteFieldElement) -> FiniteFieldElement {
+        FiniteFieldElement { value: plusMod(self.value, rhs.value), p: self.p }
+    }
+
+    pub fn pow(self, rhs: FiniteFieldElement) -> FiniteFieldElement {
+        
+        FiniteFieldElement { value: plusMod(self.value.), p: () }
+    }
 }
 
 impl Display for FiniteFieldElement {
@@ -77,14 +92,6 @@ impl Mul for FiniteFieldElement {
             panic!("p doesn't match: {} != {}", self.p, rhs.p);
         }
         Self::new(self.value * rhs.value, self.p)
-    }
-}
-
-impl Div for FiniteFieldElement {
-    type Output = Self;
-
-    fn div(self, rhs: Self) -> Self::Output {
-        Self::new(self.value / rhs.value, self.p)
     }
 }
 

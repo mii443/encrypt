@@ -17,4 +17,12 @@ fn main() {
     };
 
     println!("{:?}", ec.add(ecp1.clone(), ecp1));
+
+    for x in 1..101 {
+        for y in 1..101 {
+            println!("{}, {}: {}", x, y, encrypt::common::math::plusMod(BigDecimal::from_i32(x).unwrap(), BigDecimal::from_i32(y).unwrap()));
+        }
+    }
+
+    println!("{}", encrypt::common::math::plusMod(BigDecimal::from_i32(100).unwrap(), BigDecimal::from_i32(50).unwrap()));
 }
