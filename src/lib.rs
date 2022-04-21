@@ -6,3 +6,5 @@ pub mod token;
 pub mod tokenizer;
 pub mod variable;
 pub mod std;
+#[macro_use]
+extern crate log;

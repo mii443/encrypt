@@ -20,10 +20,10 @@ pub struct ExternalFuncReturn {
 }
 
 pub struct GPSL {
+    pub functions: Option<Vec<Box<Node>>>,
+    pub global_variables: Vec<Variable>,
     pub source: Source,
     pub l_vars: HashMap<String, LocalVariable>,
-    pub assembly: String,
-    pub offset_size: usize,
     pub external_func: Vec<fn(String, Vec<Variable>) -> ExternalFuncReturn>
 }
 
@@ -44,12 +44,12 @@ impl VariableStatus {
 }
 
 impl GPSL {
-    pub fn new(source: Source, external_func: Vec<fn(String, Vec<Variable>) -> ExternalFuncReturn>) -> GPSL {
+    pub fn new(source: Source, functions: Option<Vec<Box<Node>>>, external_func: Vec<fn(String, Vec<Variable>) -> ExternalFuncReturn>) -> GPSL {
         GPSL {
             source,
+            functions,
+            global_variables: vec![],
             l_vars: HashMap::new(),
-            assembly: String::from(""),
-            offset_size: 0,
             external_func
         }
     }
@@ -68,6 +68,7 @@ impl GPSL {
     pub fn evaluate(&mut self, node: Box<Node>) -> Result<Option<Variable>, String> {
         match *node {
             Node::Call { name, args } => {
+                let function_name = name;
                 let f = self.external_func.clone();
                 let mut args_value: Vec<Variable> = vec![];
                 for arg in args {
@@ -76,14 +77,37 @@ impl GPSL {
                     }
                 }
 
+                if let Some(functions) = self.functions.clone() {
+                    for function in functions {
+                        match *function {
+                            Node::Function { name, body, args } => {
+                                if name == function_name {
+                                    for program in body {
+                                        if let Ok(Some(res)) = self.evaluate(program) {
+                                            match res {
+                                                Variable::Return { value } => {
+                                                    return Ok(Some(*value));
+                                                }
+                                                _ => {}
+                                            }
+                                        }
+                                    }
+                                    return Ok(None);
+                                }
+                            },
+                            _ => {}
+                        }
+                    }
+                }
+
                 for func in f {
-                    let res = func(name.clone(), args_value.clone());
+                    let res = func(function_name.clone(), args_value.clone());
                     if res.status == ExternalFuncStatus::SUCCESS {
                         return Ok(res.value);
                     }
                 }
 
-                Err(format!("Function not found: {}", name))
+                Err(format!("Function not found: {}", function_name))
             }
             Node::Text { value } => {
                 Ok(Some(Variable::Text {
@@ -403,6 +427,10 @@ impl GPSL {
                     Variable::Number {
                         value: 0
                     }
+                } else if var_type == "String" {
+                    Variable::Text {
+                        value: String::default()
+                    }
                 } else {
                     return Err(format!("{}: 未知の型です。", var_type));
                 };
@@ -416,27 +444,31 @@ impl GPSL {
                 );
                 return Ok(None);
             }
+            _ => { Ok(None) },
         }
     }
 
-    pub fn run(&mut self) -> Result<Variable, String> {
-        let mut tokenizer = Tokenizer::new();
+    pub fn run(&mut self, function_name: String, function_args: Vec<Box<Node>>) -> Result<Variable, String> {
+        debug!("searching {}", function_name);
 
-        tokenizer.tokenize(&mut self.source)?;
-
-        let mut parser = Parser {
-            tokenizer: tokenizer.clone(),
-            local_vars: HashMap::new(),
-        };
-
-        let programs = parser.program()?;
-
-        for program in programs {
-            if let Ok(Some(res)) = self.evaluate(program) {
-                match res {
-                    Variable::Return { value } => {
-                        return Ok(*value);
-                    }
+        if let Some(functions) = self.functions.clone() {
+            for function in functions {
+                match *function {
+                    Node::Function { name, body, args } => {
+                        if name == function_name {
+                            debug!("running: {}", function_name);
+                            for program in body {
+                                if let Ok(Some(res)) = self.evaluate(program) {
+                                    match res {
+                                        Variable::Return { value } => {
+                                            return Ok(*value);
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                        }
+                    },
                     _ => {}
                 }
             }

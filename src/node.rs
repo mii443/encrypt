@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum NodeKind {
     ASSIGN,
@@ -13,6 +15,11 @@ pub enum NodeKind {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Node {
+    Function {
+        name: String,
+        args: HashMap<String, String>,
+        body: Vec<Box<Node>>
+    },
     Operator {
         kind: NodeKind,
         lhs: Box<Node>,

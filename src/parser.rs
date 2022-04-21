@@ -10,6 +10,57 @@ pub struct Parser {
 }
 
 impl Parser {
+    pub fn functions(&mut self) -> Result<Vec<Box<Node>>, String> {
+        let mut nodes: Vec<Box<Node>> = vec![];
+        loop {
+            if self.tokenizer.current_token().kind != TokenKind::EOF {
+                nodes.push(self.function()?);
+            } else {
+                return Ok(nodes);
+            }
+        }
+    }
+
+    /*
+        function: FN IDENT LPAREN (IDENT COLON IDENT COMMA?)* RPAREN (ARROW IDENT)? block ;
+    */
+    pub fn function(&mut self) -> Result<Box<Node>, String> {
+        if self.tokenizer.consume_kind_str(TokenKind::RESERVED, String::from("fn")) {
+            debug!("parsing function");
+            let func_name = self.tokenizer.current_token().clone();
+            self.tokenizer.expect_kind(TokenKind::IDENT)?;
+            let mut args = HashMap::new();
+            self.tokenizer.expect(String::from("("))?;
+            debug!("parsing args");
+            while !self.tokenizer.consume_kind_str(TokenKind::RESERVED, String::from(")")) {
+                debug!("consume argument");
+                let name = self.tokenizer.expect_ident()?;
+                self.tokenizer.consume_kind_str(TokenKind::RESERVED, String::from(":"));
+                let type_str = self.tokenizer.expect_ident()?;
+                self.tokenizer.consume_kind_str(TokenKind::RESERVED, String::from(","));
+                args.insert(name, type_str);
+            }
+            let mut nodes: Vec<Box<Node>> = vec![];
+            debug!("parsing body node");
+            loop {
+                nodes.push(self.stmt()?);
+                debug!("body nodes parsed");
+                //self.tokenizer.expect(String::from("}"))?;
+                return Ok(Box::new(Node::Function {
+                    name: func_name.str,
+                    args,
+                    body: nodes
+                }));
+            }
+        } else {
+            println!("{:?}", self.tokenizer.current_token());
+            Err(String::from("Unexpected token."))
+        }
+    }
+
+    /*
+        program: stmt* ;
+    */
     pub fn program(&mut self) -> Result<Vec<Box<Node>>, String> {
         let mut nodes: Vec<Box<Node>> = vec![];
         loop {
@@ -21,6 +72,16 @@ impl Parser {
         }
     }
 
+    /*
+        stmt: let 
+            | block 
+            | return 
+            | if 
+            | while 
+            | for 
+            | expr SEMICOLON 
+            ;
+    */
     pub fn stmt(&mut self) -> Result<Box<Node>, String> {
         if self
             .tokenizer
@@ -135,10 +196,16 @@ impl Parser {
         return node;
     }
 
+    /*
+        expr: assign ;
+    */
     pub fn expr(&mut self) -> Result<Box<Node>, String> {
         Ok(self.assign()?)
     }
 
+    /*
+        assign: equality (EQ assign)? ;
+    */
     pub fn assign(&mut self) -> Result<Box<Node>, String> {
         let mut node = self.equality()?;
 
@@ -149,6 +216,9 @@ impl Parser {
         Ok(node)
     }
 
+    /*
+        equality: relational (EQEQ relational | NE relational | CONJ)* ;
+    */
     pub fn equality(&mut self) -> Result<Box<Node>, String> {
         let mut node = self.relational()?;
 
@@ -163,6 +233,9 @@ impl Parser {
         }
     }
 
+    /*
+        relational: add (LE add | LT add | BE add | BT add)* ;
+    */
     pub fn relational(&mut self) -> Result<Box<Node>, String> {
         let mut node = self.add()?;
 
@@ -181,6 +254,9 @@ impl Parser {
         }
     }
 
+    /*
+        add: mul (ADD mul | SUB mul | SUB_ASSIGNMENT mul | ADD_ASSIGNMENT mul)* ;
+    */
     pub fn add(&mut self) -> Result<Box<Node>, String> {
         let mut node = self.mul()?;
 
@@ -207,6 +283,9 @@ impl Parser {
         }
     }
 
+    /*
+        mul: unary (MUL unary | DIV unary | DIV_ASSIGNMENT unary | MUL_ASSIGNMENT unary)* ;
+    */
     pub fn mul(&mut self) -> Result<Box<Node>, String> {
         let mut node = self.unary()?;
         loop {
@@ -232,6 +311,9 @@ impl Parser {
         }
     }
 
+    /*
+        primary: LPAREN expr RPAREN | function_call | TEXT | NUM ;
+    */
     pub fn primary(&mut self) -> Result<Box<Node>, String> {
         if self.tokenizer.consume(String::from("(")) {
             let node = self.expr()?;
@@ -268,6 +350,12 @@ impl Parser {
         return Ok(Node::new_num_node(self.tokenizer.expect_number()?));
     }
 
+    /*
+        unary: ADD primary 
+            | SUB primary 
+            | primary 
+            ;
+    */
     pub fn unary(&mut self) -> Result<Box<Node>, String> {
         if self.tokenizer.consume(String::from("+")) {
             return Ok(self.primary()?);
