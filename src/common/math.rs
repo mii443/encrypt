@@ -1,8 +1,6 @@
-use std::ops::Div;
-
 use bigdecimal::{BigDecimal, FromPrimitive, Zero, One};
 
-fn extGCD(a: BigDecimal, b: BigDecimal) -> (BigDecimal, BigDecimal, BigDecimal) {
+pub fn ext_gcd(a: BigDecimal, b: BigDecimal) -> (BigDecimal, BigDecimal, BigDecimal) {
     let mut a = a;
     let mut b = b;
     let mut x0 = BigDecimal::from_i32(1).unwrap();
@@ -13,7 +11,8 @@ fn extGCD(a: BigDecimal, b: BigDecimal) -> (BigDecimal, BigDecimal, BigDecimal) 
     while b != BigDecimal::zero() {
         let q = down(a.clone() / b.clone());
         let at = a.clone();
-        a = plusMod(at, b.clone());
+        a = b.clone();
+        b = plus_mod(at, b.clone());
 
         let x0t = x0.clone();
         x0 = x1.clone();
@@ -26,18 +25,28 @@ fn extGCD(a: BigDecimal, b: BigDecimal) -> (BigDecimal, BigDecimal, BigDecimal) 
     return (a, x0, y0);
 }
 
-pub fn plusMod(a: BigDecimal, b: BigDecimal) -> BigDecimal {
+pub fn plus_mod(a: BigDecimal, b: BigDecimal) -> BigDecimal {
     a.clone() - floor(a / b.clone()) * b
 }
 
-pub fn modInv(a: BigDecimal, m: BigDecimal) -> BigDecimal {
-    let r = extGCD(a, m);
+pub fn mod_inv(a: BigDecimal, m: BigDecimal) -> BigDecimal {
+    let r = ext_gcd(a, m.clone());
     if r.0 != BigDecimal::one() {
         panic!("Moduler inverse does not exist.");
     } else {
-
-        return plusMod(r.1, m);
+        return plus_mod(r.1, m);
     }
+}
+
+pub fn pow(a: BigDecimal, b: BigDecimal) -> BigDecimal {
+    let mut i = BigDecimal::one();
+    let mut a = a;
+    let oa = a.clone();
+    while i < b {
+        a = a.clone() * oa.clone();
+        i += BigDecimal::one();
+    }
+    a
 }
 
 pub fn down(a: BigDecimal) -> BigDecimal {

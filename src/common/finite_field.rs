@@ -1,8 +1,8 @@
-use std::{ops::{Add, Sub, Mul, Div, Neg}, fmt::{self, Display}};
+use std::{ops::{Add, Sub, Mul, Neg}, fmt::{self, Display}};
 
 use bigdecimal::{BigDecimal, Zero};
 
-use super::math::{self, modInv, plusMod};
+use super::math::{self, mod_inv, plus_mod};
 
 #[macro_export]
 macro_rules! b {
@@ -45,16 +45,15 @@ impl FiniteFieldElement {
     }
 
     pub fn floor_div(self, rhs: FiniteFieldElement) -> Self {
-        self * FiniteFieldElement { value: modInv(rhs.value, self.p.clone()), p:  self.p }
+        self.clone() * FiniteFieldElement { value: mod_inv(rhs.value, self.p.clone()), p:  self.p }
     }
 
     pub fn rem(self, rhs: FiniteFieldElement) -> FiniteFieldElement {
-        FiniteFieldElement { value: plusMod(self.value, rhs.value), p: self.p }
+        FiniteFieldElement { value: plus_mod(self.value, rhs.value), p: self.p }
     }
 
     pub fn pow(self, rhs: FiniteFieldElement) -> FiniteFieldElement {
-        
-        FiniteFieldElement { value: plusMod(self.value.), p: () }
+        FiniteFieldElement { value: plus_mod(math::pow(self.value, rhs.value), self.p.clone()), p: self.p }
     }
 }
 
@@ -127,5 +126,13 @@ mod tests {
         let a = ffe!(2, 5);
         let b = ffe!(3, 5);
         assert_eq!(a * b, ffe!(1, 5));
+    }
+
+    #[test]
+    fn pow() {
+        let a = ffe!(3, 50);
+        let b = ffe!(4, 50);
+        println!("{:?}", math::pow(a.clone().value, b.clone().value));
+        assert_eq!(a.pow(b), ffe!(31, 50));
     }
 }

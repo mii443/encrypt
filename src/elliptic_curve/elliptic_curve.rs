@@ -17,7 +17,11 @@ pub struct EllipticCurvePoint {
 
 impl EllipticCurve {
     pub fn add(self, lhs: EllipticCurvePoint, rhs: EllipticCurvePoint) -> EllipticCurvePoint {
-        if lhs.clone().x == rhs.x && rhs.y == -lhs.clone().y {
+        let (x1, y1) = (rhs.x.clone(), rhs.y.clone());
+        let (x2, y2) = (lhs.x.clone(), lhs.y.clone());
+        let p = x1.p.clone();
+
+        if x1.clone() == x2.clone() && y2.clone() == -y1.clone() {
             return EllipticCurvePoint {
                 x: ffe!(0, 1),
                 y: ffe!(0, 1),
@@ -33,58 +37,25 @@ impl EllipticCurve {
             return lhs
         }
 
-        let (psi, phi) = if lhs == rhs {
-            let phi = Self::twice_phi(lhs.clone(), self.clone());
-            let psi = Self::twice_psi(lhs.clone(), self);
-
-            (phi, psi)
+        let l = if x1.clone() == x2.clone() && y1.clone() == y2.clone() {
+            (
+                x1.clone().pow(ffeb!(b!(2), p.clone()))
+                * ffeb!(b!(3), p.clone())
+                + ffeb!(self.a, p.clone())
+            ).floor_div(
+                y1.clone() * ffeb!(b!(2), p.clone())
+            )
         } else {
-            let phi = Self::add_phi(lhs.clone(), rhs.clone());
-            let psi = Self::add_psi(lhs.clone(), rhs.clone());
-
-            (phi, psi)
+            (y2 - y1.clone()).floor_div(x2.clone() - x1.clone())
         };
 
-        println!("{}, {}", phi, psi);
-
-        let x = phi.clone() * phi.clone() - lhs.x.clone() - rhs.x.clone();
-        let y = - phi * x.clone() - psi;
+        let x3 = l.clone().pow(ffeb!(b!(2), p.clone())) - x1.clone() - x2.clone();
+        let y3 = l * (x1 - x3.clone()) - y1;
 
         EllipticCurvePoint {
-            x,
-            y,
+            x: x3,
+            y: y3,
             infinity: false
         }
-    }
-
-    fn add_phi(a: EllipticCurvePoint, b: EllipticCurvePoint) -> FiniteFieldElement {
-        (a.y - b.y) / (a.x - b.x)
-    }
-
-    fn add_psi(a: EllipticCurvePoint, b: EllipticCurvePoint) -> FiniteFieldElement {
-        (a.x.clone() * b.y - b.x.clone() * a.y) / (a.x - b.x)
-    }
-
-    fn twice_phi(a: EllipticCurvePoint, c: EllipticCurve) -> FiniteFieldElement {
-        let x = a.x.clone();
-        let y = a.y.clone();
-        let p = a.x.p.clone();
-        (
-            ffeb!(b!(3), p.clone()) * x.clone() * x
-             + ffeb!(c.a, p.clone())
-        ) / (
-            ffeb!(b!(2), p) * y
-        )
-    }
-
-    fn twice_psi(a: EllipticCurvePoint, c: EllipticCurve) -> FiniteFieldElement {
-        let p = a.x.p.clone();
-        (
-            ffeb!(b!(3), p.clone()) * a.x.clone() * a.x.clone()
-             + ffeb!(c.a, p.clone()) * a.x.clone()
-             - ffeb!(b!(2), p.clone()) * a.y.clone() * a.y.clone()
-        ) / (
-            ffeb!(b!(2), p) * a.y
-        )
     }
 }
