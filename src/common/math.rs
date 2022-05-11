@@ -1,4 +1,4 @@
-use bigdecimal::{BigDecimal, FromPrimitive, Zero, One};
+use bigdecimal::{BigDecimal, FromPrimitive, Zero, One, ToPrimitive};
 
 pub fn ext_gcd(a: BigDecimal, b: BigDecimal) -> (BigDecimal, BigDecimal, BigDecimal) {
     let mut a = a;
@@ -50,11 +50,10 @@ pub fn pow(a: BigDecimal, b: BigDecimal) -> BigDecimal {
 }
 
 pub fn down(a: BigDecimal) -> BigDecimal {
-    return a.clone() - a % BigDecimal::one();
+    return a.clone() - BigDecimal::from_u128(a.to_u128().unwrap()).unwrap();
 }
 
 pub fn floor(a: BigDecimal) -> BigDecimal {
-
     let m = a.clone() % BigDecimal::one();
 
     if a > BigDecimal::zero() {

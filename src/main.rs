@@ -22,8 +22,10 @@ fn main() {
         infinity: false
     };
 
-    println!("{:?}", ec.add(ecp1.clone(), ecp2));
-/*
+    for x in 0..1000 {
+        println!("{:?}", ec.clone().add(ecp1.clone(), ecp2.clone()));
+    }
+    /*
     for x in 1..101 {
         for y in 1..101 {
             println!("{}, {}: {}", x, y, encrypt::common::math::plusMod(BigDecimal::from_i32(x).unwrap(), BigDecimal::from_i32(y).unwrap()));

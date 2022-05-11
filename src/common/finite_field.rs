@@ -78,8 +78,7 @@ impl Sub for FiniteFieldElement {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        let rhs = FiniteFieldElement::new(-rhs.value, rhs.p);
-        self + rhs
+        Self::new(self.value - rhs.value, rhs.p)
     }
 }
 
