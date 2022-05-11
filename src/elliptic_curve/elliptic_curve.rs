@@ -1,5 +1,7 @@
-use bigdecimal::{BigDecimal, FromPrimitive};
-use crate::{common::finite_field::*, b, ffeb, ffe};
+use std::ops::{Rem, Div};
+
+use bigdecimal::{BigDecimal, FromPrimitive, Zero};
+use crate::{common::{finite_field::*, math}, b, ffeb, ffe};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct EllipticCurve {
@@ -16,6 +18,29 @@ pub struct EllipticCurvePoint {
 }
 
 impl EllipticCurve {
+
+    pub fn times(self, lhs: EllipticCurvePoint, rhs: BigDecimal) -> EllipticCurvePoint {
+        let mut tmp = lhs.clone();
+        let mut point = EllipticCurvePoint {
+            x: ffe!(0, 1),
+            y: ffe!(0, 1),
+            infinity: true
+        };
+        let mut n = rhs.clone();
+
+        while n > BigDecimal::zero() {
+            println!("{}", n);
+            if math::floor(n.clone().rem(BigDecimal::from_i32(2).unwrap())) != BigDecimal::zero() {
+                point = self.clone().add(point, tmp.clone());
+            }
+            n = math::floor(n.clone().div(BigDecimal::from_i32(2).unwrap()));
+            tmp = self.clone().add(tmp.clone(), tmp.clone());
+        }
+
+        println!("{:?}", &point);
+        return point;
+    }
+
     pub fn add(self, lhs: EllipticCurvePoint, rhs: EllipticCurvePoint) -> EllipticCurvePoint {
         let (x1, y1) = (rhs.x.clone(), rhs.y.clone());
         let (x2, y2) = (lhs.x.clone(), lhs.y.clone());
