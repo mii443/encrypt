@@ -1,26 +1,29 @@
-use bigdecimal::{BigDecimal, FromPrimitive, Num, Zero};
-use crate::common::finite_field::FiniteFieldElement;
-
-use crate::{ffe, b};
+use std::ops::{Mul, Add, Sub, Div};
 
 use super::elliptic_curve::{EllipticCurve, EllipticCurvePoint};
 
-pub struct Encryption {
-    pub ellictic_curve: EllipticCurve,
-    pub base_point: EllipticCurvePoint,
-    pub order: BigDecimal
+#[derive(Debug)]
+pub struct Encryption<T>
+where
+    T: Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + Copy + PartialEq
+{
+    pub ellictic_curve: EllipticCurve<T>,
+    pub base_point: EllipticCurvePoint<T>,
+    pub order: T
 }
 
-impl Encryption {
-    pub fn plain_to_ec_point(&self, m: BigDecimal) -> EllipticCurvePoint {
-        if m == BigDecimal::zero() {
-            return EllipticCurvePoint {
-                x: ffe!(0, 1),
-                y: ffe!(0, 1),
-                infinity: true
-            };
+impl<T> Encryption<T>
+where
+    T: Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + Copy + PartialEq
+{
+    pub fn plain_to_ec_point<U>(&self, m: U) -> EllipticCurvePoint<T>
+    where
+        U: Sub<Output = U> + Div<Output = U> + Copy + PartialEq + PartialOrd
+    {
+        if m == m - m {
+            return EllipticCurvePoint::Infinity
         }
 
-        return self.ellictic_curve.clone().times(self.base_point.clone(), m);
+        return self.base_point * m;
     }
 }

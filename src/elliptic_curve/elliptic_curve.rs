@@ -1,86 +1,86 @@
-use std::ops::{Rem, Div};
+use std::ops::{Div, Add, Sub, Mul};
 
-use bigdecimal::{BigDecimal, FromPrimitive, Zero};
-use crate::{common::{finite_field::*, math}, b, ffeb, ffe};
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct EllipticCurve {
-    pub a: BigDecimal,
-    pub b: BigDecimal,
-    pub p: BigDecimal
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct EllipticCurve<T> {
+    pub a: T,
+    pub b: T
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct EllipticCurvePoint {
-    pub x: FiniteFieldElement,
-    pub y: FiniteFieldElement,
-    pub infinity: bool
-}
-
-impl EllipticCurve {
-
-    pub fn times(self, lhs: EllipticCurvePoint, rhs: BigDecimal) -> EllipticCurvePoint {
-        let mut tmp = lhs.clone();
-        let mut point = EllipticCurvePoint {
-            x: ffe!(0, 1),
-            y: ffe!(0, 1),
-            infinity: true
-        };
-        let mut n = rhs.clone();
-
-        while n > BigDecimal::zero() {
-            println!("{}", n);
-            if math::floor(n.clone().rem(BigDecimal::from_i32(2).unwrap())) != BigDecimal::zero() {
-                point = self.clone().add(point, tmp.clone());
-            }
-            n = math::floor(n.clone().div(BigDecimal::from_i32(2).unwrap()));
-            tmp = self.clone().add(tmp.clone(), tmp.clone());
-        }
-
-        println!("{:?}", &point);
-        return point;
+impl<T> EllipticCurve<T> {
+    pub fn point(self, x: T, y: T) -> EllipticCurvePoint<T> {
+        EllipticCurvePoint::Point { x, y, a: self.a, b: self.b }
     }
+}
 
-    pub fn add(self, lhs: EllipticCurvePoint, rhs: EllipticCurvePoint) -> EllipticCurvePoint {
-        let (x1, y1) = (rhs.x.clone(), rhs.y.clone());
-        let (x2, y2) = (lhs.x.clone(), lhs.y.clone());
-        let p = x1.p.clone();
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum EllipticCurvePoint<T> {
+    Point {
+        x: T,
+        y: T,
+        a: T,
+        b: T
+    },
+    Infinity
+}
 
-        if x1.clone() == x2.clone() && y2.clone() == -y1.clone() {
-            return EllipticCurvePoint {
-                x: ffe!(0, 1),
-                y: ffe!(0, 1),
-                infinity: true
-            }
+impl<T> Add for EllipticCurvePoint<T>
+where
+    T: Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + Copy + PartialEq
+{
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        match self.clone() {
+            EllipticCurvePoint::Point { x: x1, y: y1, a, b } => {
+                match rhs {
+                    EllipticCurvePoint::Point { x: x2, y: y2, a: a2, b: b2 } => {
+
+                        if a != a2 || b != b2 {
+                            panic!("Cannot add different curve point.");
+                        }
+
+                        if x1 == x2 && y2 == y1 - y1 - y1 {
+                            return EllipticCurvePoint::Infinity
+                        }
+
+                        let one = b / b;
+                        let two = one + one;
+                        let three = two + one;
+                        let l = if x1 == x2 && y1 == y2 {
+                            (x1 * x1 * three + a) / (y1 * two)
+                        } else {
+                            (y2 - y1) / (x2 - x1)
+                        };
+                        let x = l * l - x1 - x2;
+                        let y = l * (x1 - x) - y1;
+
+                        EllipticCurvePoint::Point { x, y, a, b }
+                    },
+                    EllipticCurvePoint::Infinity => self
+                }
+            },
+            EllipticCurvePoint::Infinity => rhs
+        }
+    }
+}
+
+impl<T, U> Mul<U> for EllipticCurvePoint<T>
+where
+    T: Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + Copy + PartialEq,
+    U: Sub<Output = U> + Div<Output = U> + Copy + PartialEq + PartialOrd
+{
+    type Output = Self;
+
+    fn mul(self, rhs: U) -> Self::Output {
+        let one = rhs / rhs;
+        let zero = rhs - rhs;
+        let mut n = rhs;
+        let mut r: EllipticCurvePoint<T> = EllipticCurvePoint::Infinity;
+        while n > zero {
+            r = r + self;
+            n = n - one;
         }
 
-        if lhs.infinity {
-            return rhs
-        }
-
-        if rhs.infinity {
-            return lhs
-        }
-
-        let l = if x1.clone() == x2.clone() && y1.clone() == y2.clone() {
-            (
-                x1.clone().pow(ffeb!(b!(2), p.clone()))
-                * ffeb!(b!(3), p.clone())
-                + ffeb!(self.a, p.clone())
-            ).floor_div(
-                y1.clone() * ffeb!(b!(2), p.clone())
-            )
-        } else {
-            (y2 - y1.clone()).floor_div(x2.clone() - x1.clone())
-        };
-
-        let x3 = l.clone().pow(ffeb!(b!(2), p.clone())) - x1.clone() - x2.clone();
-        let y3 = l * (x1 - x3.clone()) - y1;
-
-        EllipticCurvePoint {
-            x: x3,
-            y: y3,
-            infinity: false
-        }
+        r
     }
 }

@@ -1,137 +1,180 @@
-use std::{ops::{Add, Sub, Mul, Neg}, fmt::{self, Display}};
+use std::{ops::{Add, Sub, Mul, AddAssign, SubAssign, Div, Rem}, fmt::Debug};
 
-use bigdecimal::{BigDecimal, Zero};
-
-use super::math::{self, mod_inv, plus_mod};
-
-#[macro_export]
-macro_rules! b {
-    ( $x: expr ) => {
-        BigDecimal::from_i64($x).unwrap()
-    };
+#[derive(PartialEq, Debug, Copy, Clone)]
+pub struct FiniteFieldElement<T>
+where
+    T: PartialEq + Copy
+{
+    pub value: T,
+    pub p: T,
+    pub one: T
 }
 
-#[macro_export]
-macro_rules! ffe {
-    ( $value: expr, $p: expr ) => {
-        FiniteFieldElement::new(b!($value), b!($p))
-    };
-}
-
-#[macro_export]
-macro_rules! ffeb {
-    ( $value: expr, $p: expr ) => {
-        FiniteFieldElement::new($value, $p)
-    };
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct FiniteFieldElement {
-    pub value: BigDecimal,
-    pub p: BigDecimal
-}
-
-fn pmod(x: BigDecimal, y: BigDecimal) -> BigDecimal {
-    if x < BigDecimal::zero() {
-        (y.clone() - (-x % y.clone())) % y
-    } else {
-        x % y
+impl<T> FiniteFieldElement<T>
+where
+    T: PartialEq + Copy
+{
+    pub fn new(value: T, p: T, one: T) -> Self {
+        Self { value, p, one }
     }
 }
 
-impl FiniteFieldElement {
-    pub fn new(value: BigDecimal, p: BigDecimal) -> Self {
-        Self { value: pmod(value, p.clone()), p }
-    }
-
-    pub fn floor_div(self, rhs: FiniteFieldElement) -> Self {
-        self.clone() * FiniteFieldElement { value: mod_inv(rhs.value, self.p.clone()), p:  self.p }
-    }
-
-    pub fn rem(self, rhs: FiniteFieldElement) -> FiniteFieldElement {
-        FiniteFieldElement { value: plus_mod(self.value, rhs.value), p: self.p }
-    }
-
-    pub fn pow(self, rhs: FiniteFieldElement) -> FiniteFieldElement {
-        FiniteFieldElement { value: plus_mod(math::pow(self.value, rhs.value), self.p.clone()), p: self.p }
-    }
-}
-
-impl Display for FiniteFieldElement {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} mod {}", self.value, self.p)
+impl<T> FiniteFieldElement<T>
+where
+    T: Rem<Output = T> + Add<Output = T> + Sub<Output = T> + Div<Output = T> + PartialEq + PartialOrd + Copy + Debug
+{
+    fn pow(self, e: T) -> Self {
+        let one = self.one;
+        let two = one + one;
+        let mut r = Self::new(one, self.p, self.one);
+        let mut i = e;
+        let zero = self.value - self.value;
+        while i > zero {
+            if i % two != zero {
+                r = r * self;
+            }
+            i = i / two;
+        }
+        r * self
     }
 }
 
-impl Add for FiniteFieldElement {
+impl<T> Add for FiniteFieldElement<T>
+where
+    T: Add<Output = T> + Sub<Output = T> + PartialEq + PartialOrd + Copy
+{
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
         if self.p != rhs.p {
-            panic!("p doesn't match: {} != {}", self.p, rhs.p);
+            panic!("Cannot add different field value.")
         }
-        Self::new(self.value + rhs.value, self.p)
+        let sum = self.value + rhs.value;
+        if sum >= self.p {
+            Self::new(sum - self.p, self.p, self.one)
+        } else {
+            Self::new(sum, self.p, self.one)
+        }
     }
 }
 
-impl Sub for FiniteFieldElement {
+impl<T> AddAssign for FiniteFieldElement<T>
+where
+    T: Add<Output = T> + Sub<Output = T> + PartialEq + PartialOrd + Copy
+{
+    fn add_assign(&mut self, rhs: Self) {
+        *self = (*self) + rhs
+    }
+}
+
+impl<T> Sub for FiniteFieldElement<T>
+where
+    T: Add<Output = T> + Sub<Output = T> + PartialEq + PartialOrd + Copy
+{
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        Self::new(self.value - rhs.value, rhs.p)
+        if self.p != rhs.p {
+            panic!("Cannot sub different field value.");
+        }
+        if self.value < rhs.value {
+            Self::new(self.p - rhs.value + self.value , self.p, self.one)
+        } else {
+            Self::new(self.value - rhs.value, self.p, self.one)
+        }
     }
 }
 
-impl Mul for FiniteFieldElement {
+impl<T> SubAssign for FiniteFieldElement<T>
+where
+    T: Add<Output = T> + Sub<Output = T> + PartialEq + PartialOrd + Copy
+{
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = (*self) - rhs
+    }
+}
+
+impl<T> Mul for FiniteFieldElement<T>
+where
+    T: Add<Output = T> + Sub<Output = T> + Div<Output = T> + Rem<Output = T> + PartialEq + PartialOrd + Copy + Debug
+{
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
         if self.p != rhs.p {
-            panic!("p doesn't match: {} != {}", self.p, rhs.p);
+            panic!("Cannot mul different field value.");
         }
-        Self::new(self.value * rhs.value, self.p)
+        let one = self.one;
+        let two = one + one;
+        let zero = self.value - self.value;
+        let mut tmp = self;
+        let mut i = rhs.value;
+        let mut r = Self::new(zero, self.p, self.one);
+        while i > zero {
+            if i % two != zero {
+                r += tmp;
+            }
+            i = i / two;
+            tmp = tmp + tmp;
+        }
+        r
     }
 }
 
-impl Neg for FiniteFieldElement {
+impl<T> Div for FiniteFieldElement<T>
+where
+    T: Add<Output = T> + Sub<Output = T> + Rem<Output = T> + Div<Output = T> + PartialEq + PartialOrd + Copy + Debug
+{
     type Output = Self;
 
-    fn neg(self) -> Self::Output {
-        Self::new(-self.value, self.p)
+    fn div(self, rhs: Self) -> Self::Output {
+        let one = self.one;
+        self * rhs.pow(self.p - one - one)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use bigdecimal::{BigDecimal, FromPrimitive};
+    use primitive_types::U512;
+
+    use super::FiniteFieldElement;
 
     #[test]
     fn add() {
-        let a = ffe!(2, 5);
-        let b = ffe!(4, 5);
-        assert_eq!(a + b, ffe!(1, 5));
+        let a = FiniteFieldElement::new(U512::from(2), U512::from(7), U512::from(1));
+        let b = FiniteFieldElement::new(U512::from(1), U512::from(7), U512::from(1));
+        let c = FiniteFieldElement::new(U512::from(3), U512::from(7), U512::from(1));
+        assert_eq!(a + b, c);
     }
 
     #[test]
     fn sub() {
-        let a = ffe!(2, 5);
-        let b = ffe!(3, 5);
-        assert_eq!(a - b, ffe!(4, 5));
+        let a = FiniteFieldElement::new(U512::from(6), U512::from(7), U512::from(1));
+        let b = FiniteFieldElement::new(U512::from(4), U512::from(7), U512::from(1));
+        let c = FiniteFieldElement::new(U512::from(2), U512::from(7), U512::from(1));
+        assert_eq!(a - b, c);
     }
 
     #[test]
     fn mul() {
-        let a = ffe!(2, 5);
-        let b = ffe!(3, 5);
-        assert_eq!(a * b, ffe!(1, 5));
+        let a = FiniteFieldElement::new(U512::from(3), U512::from(13), U512::from(1));
+        let b = FiniteFieldElement::new(U512::from(12), U512::from(13), U512::from(1));
+        let c = FiniteFieldElement::new(U512::from(10), U512::from(13), U512::from(1));
+        assert_eq!(a * b, c);
     }
 
     #[test]
     fn pow() {
-        let a = ffe!(3, 50);
-        let b = ffe!(4, 50);
-        println!("{:?}", math::pow(a.clone().value, b.clone().value));
-        assert_eq!(a.pow(b), ffe!(31, 50));
+        let a = FiniteFieldElement::new(U512::from(3), U512::from(13), U512::from(1));
+        let b = FiniteFieldElement::new(U512::from(1), U512::from(13), U512::from(1));
+        assert_eq!(a.pow(U512::from(3)), b);
+    }
+
+    #[test]
+    fn div() {
+        let a = FiniteFieldElement::new(U512::from(7), U512::from(19), U512::from(1));
+        let b = FiniteFieldElement::new(U512::from(5), U512::from(19), U512::from(1));
+        let c = FiniteFieldElement::new(U512::from(9), U512::from(19), U512::from(1));
+        assert_eq!(a / b, c);
     }
 }
