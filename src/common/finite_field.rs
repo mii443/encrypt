@@ -17,20 +17,20 @@ impl FiniteFieldElement {
 impl FiniteFieldElement {
     fn pow(self, e: U512) -> Self {
         let k = e.bits();
-        let mut a1 = self.value;
-        let mut a2 = self.value * self.value;
+        let mut a1 = self;
+        let mut a2 = self * self;
         let mut i = (k - 2) as i64;
 
         while i >= 0 {
             if e.bit(i as usize) {
-                a1 = (a1 * a2) % self.p;
+                a1 = a1 * a2;
             } else {
-                a2 = (a1 * a2) % self.p;
-                a1 = (a1 * a1) % self.p;
+                a2 = a1 * a2;
+                a1 = a1 * a1;
             }
             i -= 1;
         }
-        Self::new(a1, self.p)
+        a1
     }
 }
 
@@ -103,7 +103,6 @@ impl Div for FiniteFieldElement {
 
     fn div(self, rhs: Self) -> Self::Output {
         let rhs = rhs.pow(self.p - U512::from(2));
-        println!("{:?} * {:?}", self, rhs);
         self * rhs
     }
 }
@@ -143,8 +142,6 @@ mod tests {
         let a = FiniteFieldElement::new(U512::from(3u8), U512::from(13u8));
         let b = FiniteFieldElement::new(U512::from(1u8), U512::from(13u8));
         assert_eq!(a.pow(U512::from(3)), b);
-
-        println!("{:?}", FiniteFieldElement::new(U512::from(5u8), U512::from(19u8)).pow(U512::from(17)));
     }
 
     #[test]

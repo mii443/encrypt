@@ -1,6 +1,6 @@
 use encrypt::{elliptic_curve::{elliptic_curve::{EllipticCurve, EllipticCurvePoint}, encryption::Encryption}, common::finite_field::FiniteFieldElement};
 use primitive_types::U512;
-// 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+
 fn main() {
     println!("Encryption Library");
 
@@ -32,20 +32,19 @@ fn main() {
             secp256_k1_base_x,
             secp256_k1_base_y,
         ),
-        order: secp256_k1_order
+        order: secp256_k1_order,
+        plain_mapping: vec![]
     };
 
+    let twenty = encryption.plain_to_ec_point(U512::from(12u8));
+    let ten = encryption.plain_to_ec_point(U512::from(10u8));
+    let two = encryption.plain_to_ec_point(U512::from(2u8));
+    println!("{:?}", twenty);
+    println!("{:?}", ten + two);
+    println!("{:?}", encryption.ec_point_to_plain(ten));
+/*
     let t = encryption.base_point + encryption.base_point;
     println!("{:?}", t);
     println!("{:?}", encryption.base_point);
-
-    /*
-    for x in 1..101 {
-        for y in 1..101 {
-            println!("{}, {}: {}", x, y, encrypt::common::math::plusMod(BigDecimal::from_i32(x).unwrap(), BigDecimal::from_i32(y).unwrap()));
-        }
-    }
-
-    println!("{}", encrypt::common::math::plusMod(BigDecimal::from_i32(100).unwrap(), BigDecimal::from_i32(50).unwrap()));
-*/
+    */
 }
