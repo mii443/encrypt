@@ -36,12 +36,16 @@ fn main() {
         plain_mapping: vec![]
     };
 
-    let twenty = encryption.plain_to_ec_point(U512::from(12u8));
-    let ten = encryption.plain_to_ec_point(U512::from(10u8));
-    let two = encryption.plain_to_ec_point(U512::from(2u8));
-    println!("{:?}", twenty);
-    println!("{:?}", ten + two);
-    println!("{:?}", encryption.ec_point_to_plain(ten));
+    //let twenty = encryption.plain_to_ec_point(U512::from(12u8));
+    //let ten = encryption.plain_to_ec_point(U512::from(10u8));
+    //let two = encryption.plain_to_ec_point(U512::from(2u8));
+    //println!("{:?}", twenty);
+    //println!("{:?}", ten + two);
+    //println!("{:?}", encryption.ec_point_to_plain(ten));
+    let p = encryption.base_point + encryption.base_point;
+    println!("{:?}", p);
+    println!("{}", p.check());
+    println!("{}", encryption.base_point.check());
 /*
     let t = encryption.base_point + encryption.base_point;
     println!("{:?}", t);

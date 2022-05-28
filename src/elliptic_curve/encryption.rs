@@ -2,24 +2,20 @@ use std::ops::{Mul, Add, Sub, Div};
 
 use primitive_types::U512;
 
+use crate::common::finite_field::FiniteFieldElement;
+
 use super::elliptic_curve::{EllipticCurve, EllipticCurvePoint};
 
 #[derive(Debug)]
-pub struct Encryption<T>
-where
-    T: Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + Copy + PartialEq
-{
-    pub ellictic_curve: EllipticCurve<T>,
-    pub base_point: EllipticCurvePoint<T>,
-    pub order: T,
-    pub plain_mapping: Vec<EllipticCurvePoint<T>>
+pub struct Encryption {
+    pub ellictic_curve: EllipticCurve,
+    pub base_point: EllipticCurvePoint,
+    pub order: FiniteFieldElement,
+    pub plain_mapping: Vec<EllipticCurvePoint>
 }
 
-impl<T> Encryption<T>
-where
-    T: Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + Copy + PartialEq
-{
-    pub fn ec_point_to_plain(&self, point: EllipticCurvePoint<T>) -> U512 {
+impl Encryption {
+    pub fn ec_point_to_plain(&self, point: EllipticCurvePoint) -> U512 {
         println!("ec point to plain");
         match point {
             EllipticCurvePoint::Infinity => {
@@ -75,8 +71,8 @@ where
         U512::from(x + 1)
     }
 
-    pub fn plain_to_ec_point(&self, m: U512) -> EllipticCurvePoint<T> {
-        if m == U512::from(0) {
+    pub fn plain_to_ec_point(&self, m: U512) -> EllipticCurvePoint {
+        if m == U512::from(0u8) {
             return EllipticCurvePoint::Infinity
         }
 
