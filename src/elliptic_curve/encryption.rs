@@ -1,5 +1,3 @@
-use std::ops::{Mul, Add, Sub, Div};
-
 use primitive_types::U512;
 
 use crate::common::finite_field::FiniteFieldElement;
@@ -29,9 +27,9 @@ impl Encryption {
         println!("get plain mapping");
         for p in &self.plain_mapping {
             match p {
-                EllipticCurvePoint::Point { x: px, y: py, a, b } => {
+                EllipticCurvePoint::Point { x: px, y: py, a: _, b: _ } => {
                     match point {
-                        EllipticCurvePoint::Point { x: ppx, y, a, b } => {
+                        EllipticCurvePoint::Point { x: ppx, y, a: _, b: _ } => {
                             if *px == ppx && *py == y {
                                 return U512::from(x) + U512::from(1u8);
                             }
@@ -55,8 +53,8 @@ impl Encryption {
 
         println!("calc mapping");
         while x < i64::MAX && !(match tmp {
-            EllipticCurvePoint::Point { x: tx, y: ty, a, b } => match point {
-                EllipticCurvePoint::Point { x: px, y: py, a, b } => tx == px && ty == py,
+            EllipticCurvePoint::Point { x: tx, y: ty, a: _, b: _ } => match point {
+                EllipticCurvePoint::Point { x: px, y: py, a: _, b: _ } => tx == px && ty == py,
                 _ => false
             },
             EllipticCurvePoint::Infinity => match point {

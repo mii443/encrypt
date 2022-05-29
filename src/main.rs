@@ -1,4 +1,4 @@
-use encrypt::{elliptic_curve::{elliptic_curve::{EllipticCurve, EllipticCurvePoint}, encryption::Encryption}, common::finite_field::FiniteFieldElement};
+use encrypt::{elliptic_curve::{elliptic_curve::EllipticCurve, encryption::Encryption}, common::finite_field::FiniteFieldElement};
 use primitive_types::U512;
 
 fn main() {

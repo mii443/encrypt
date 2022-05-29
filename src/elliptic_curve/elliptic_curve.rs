@@ -1,4 +1,4 @@
-use std::ops::{Div, Add, Sub, Mul};
+use std::ops::{Add, Mul};
 
 use primitive_types::U512;
 
@@ -47,7 +47,7 @@ impl Add for EllipticCurvePoint {
                 match rhs {
                     EllipticCurvePoint::Point { x: x2, y: y2, a: a2, b: b2 } => {
                         println!("default plus");
-                        
+
                         let p = x1.p;
                         if a != a2 || b != b2 {
                             panic!("Cannot add different curve point.");

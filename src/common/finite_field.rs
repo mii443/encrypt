@@ -1,11 +1,14 @@
-use std::{ops::{Add, Sub, Mul, AddAssign, SubAssign, Div, Rem}, fmt::Debug};
+use std::{ops::{Add, Sub, Mul, AddAssign, SubAssign, Div}, fmt::Debug};
 
+use bigdecimal::{num_bigint::BigInt, Num};
 use primitive_types::U512;
+
+use super::math::mod_inv;
 
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub struct FiniteFieldElement {
     pub value: U512,
-    pub p: U512 
+    pub p: U512
 }
 
 impl FiniteFieldElement {
@@ -15,7 +18,7 @@ impl FiniteFieldElement {
 }
 
 impl FiniteFieldElement {
-    fn pow(self, e: U512) -> Self {
+    pub fn pow(self, e: U512) -> Self {
         let k = e.bits();
         let mut a1 = self;
         let mut a2 = self * self;
@@ -102,8 +105,12 @@ impl Div for FiniteFieldElement {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
-        let rhs = rhs.pow(self.p - U512::from(2));
-        self * rhs
+        let left = BigInt::from_str_radix(&format!("{}", rhs.value), 10).unwrap();
+        let right = BigInt::from_str_radix(&format!("{}", rhs.p), 10).unwrap();
+        let mod_inv = mod_inv(left, right);
+        println!("mod_inv: {:?}", mod_inv);
+        let mod_inv = U512::from_str_radix(&format!("{}", mod_inv), 10).unwrap();
+        self * FiniteFieldElement::new(mod_inv, rhs.p)
     }
 }
 
