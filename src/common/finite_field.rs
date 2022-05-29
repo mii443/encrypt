@@ -1,9 +1,9 @@
-use std::{ops::{Add, Sub, Mul, AddAssign, SubAssign, Div}, fmt::Debug};
+use std::{ops::{Add, Sub, Mul, AddAssign, SubAssign, Div, Neg}, fmt::Debug};
 
 use bigdecimal::{num_bigint::BigInt, Num};
 use primitive_types::U512;
 
-use super::math::mod_inv;
+use super::math::{mod_inv, plus_mod};
 
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub struct FiniteFieldElement {
@@ -107,10 +107,19 @@ impl Div for FiniteFieldElement {
     fn div(self, rhs: Self) -> Self::Output {
         let left = BigInt::from_str_radix(&format!("{}", rhs.value), 10).unwrap();
         let right = BigInt::from_str_radix(&format!("{}", rhs.p), 10).unwrap();
-        let mod_inv = mod_inv(left, right);
-        println!("mod_inv: {:?}", mod_inv);
-        let mod_inv = U512::from_str_radix(&format!("{}", mod_inv), 10).unwrap();
+        let mod_inv = U512::from_str_radix(&format!("{}", mod_inv(left, right)), 10).unwrap();
         self * FiniteFieldElement::new(mod_inv, rhs.p)
+    }
+}
+
+impl Neg for FiniteFieldElement {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        let value = -BigInt::from_str_radix(&format!("{}", self.value), 10).unwrap();
+        let p = BigInt::from_str_radix(&format!("{}", self.p), 10).unwrap();
+        let plus_mod = plus_mod(value, p);
+        FiniteFieldElement::new(U512::from_str_radix(&format!("{}", plus_mod), 10).unwrap(), self.p)
     }
 }
 

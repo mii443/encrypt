@@ -19,7 +19,7 @@ fn main() {
     let secp256_k1_b = FiniteFieldElement::new(U512::from(1u8), p);
     let secp256_k1_base_x = FiniteFieldElement::new(U512::from_str_radix("0", 10).unwrap(), p);
     let secp256_k1_base_y = FiniteFieldElement::new(U512::from_str_radix("1", 10).unwrap(), p);
-    let secp256_k1_order = FiniteFieldElement::new(U512::from_str_radix("2", 10).unwrap(), p);
+    let secp256_k1_order = FiniteFieldElement::nimage.pngew(U512::from_str_radix("2", 10).unwrap(), p);
 */
     let ec = EllipticCurve {
         a: secp256_k1_a,
@@ -36,19 +36,26 @@ fn main() {
         plain_mapping: vec![]
     };
 
-    //let twenty = encryption.plain_to_ec_point(U512::from(12u8));
-    //let ten = encryption.plain_to_ec_point(U512::from(10u8));
-    //let two = encryption.plain_to_ec_point(U512::from(2u8));
-    //println!("{:?}", twenty);
-    //println!("{:?}", ten + two);
-    //println!("{:?}", encryption.ec_point_to_plain(ten));
-    let p = encryption.base_point + encryption.base_point;
-    println!("{:?}", p);
-    println!("{}", p.check());
-    println!("{}", encryption.base_point.check());
-/*
-    let t = encryption.base_point + encryption.base_point;
-    println!("{:?}", t);
-    println!("{:?}", encryption.base_point);
+    let private_key = Encryption::get_private_key();
+    println!("private_key: {:?}", private_key);
+    let public_key = encryption.get_public_key(private_key);
+    println!("public_key: {:?}", public_key);
+
+    let ten = encryption.plain_to_ec_point(U512::from(13u32));
+    let e_ten = encryption.encrypt(ten, public_key, None);
+
+    let two = encryption.plain_to_ec_point(U512::from(27000u32));
+    let e_two = encryption.encrypt(two, public_key, None);
+
+    println!("{:?}", encryption.ec_point_to_plain(Encryption::decrypt(e_ten + e_two, private_key)));
+
+    /*
+    let twenty = encryption.plain_to_ec_point(U512::from(12u8));
+    let ten = encryption.plain_to_ec_point(U512::from(10u8));
+    let two = encryption.plain_to_ec_point(U512::from(2u8));
+    println!("{:?}", twenty);
+    println!("{:?}", encryption.ec_point_to_plain(twenty));
+    println!("{:?}", ten + two);
+    println!("{:?}", encryption.ec_point_to_plain(ten + two));
     */
 }

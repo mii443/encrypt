@@ -1,4 +1,4 @@
-use std::ops::{Add, Mul};
+use std::ops::{Add, Mul, Neg};
 
 use primitive_types::U512;
 
@@ -38,6 +38,18 @@ impl EllipticCurvePoint {
     }
 }
 
+impl Neg for EllipticCurvePoint {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        if let EllipticCurvePoint::Point { x, y, a, b } = self {
+            EllipticCurvePoint::Point { x, y: -y, a, b }
+        } else {
+            return self
+        }
+    }
+}
+
 impl Add for EllipticCurvePoint {
     type Output = Self;
 
@@ -46,8 +58,6 @@ impl Add for EllipticCurvePoint {
             EllipticCurvePoint::Point { x: x1, y: y1, a, b } => {
                 match rhs {
                     EllipticCurvePoint::Point { x: x2, y: y2, a: a2, b: b2 } => {
-                        println!("default plus");
-
                         let p = x1.p;
                         if a != a2 || b != b2 {
                             panic!("Cannot add different curve point.");
@@ -58,14 +68,11 @@ impl Add for EllipticCurvePoint {
                         }
 
                         let l = if x1 == x2 && y1 == y2 {
-                            println!("twice");
                             let t = x1 * x1 * FiniteFieldElement::new(U512::from(3), p) + a;
                             let u = y1 * FiniteFieldElement::new(U512::from(2), p);
                             let a = t / u;
-                            println!("t: {:?}\nu: {:?}\na: {:?}", t, u, a);
                             a
                         } else {
-                            println!("plus");
                             (y2 - y1) / (x2 - x1)
                         };
                         let x = l * l - x1 - x2;
@@ -85,13 +92,17 @@ impl Mul<U512> for EllipticCurvePoint {
     type Output = Self;
 
     fn mul(self, rhs: U512) -> Self::Output {
+        let mut tmp = self;
+        let mut point = EllipticCurvePoint::Infinity;
         let mut n = rhs;
-        let mut r: EllipticCurvePoint = EllipticCurvePoint::Infinity;
-        while n > U512::from(0) {
-            r = r + self;
-            n = n - U512::from(1);
-        }
+        while n > U512::zero() {
+            if n & U512::one() == U512::one() {
+                point = point + tmp;
+            }
 
-        r
+            n = n >> 1;
+            tmp = tmp + tmp;
+        }
+        point
     }
 }
