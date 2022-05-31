@@ -1,4 +1,4 @@
-use std::ops::{Add, Mul, Neg};
+use std::{ops::{Add, Mul, Neg}, fmt::Display};
 
 use primitive_types::U512;
 
@@ -25,6 +25,16 @@ pub enum EllipticCurvePoint {
         b: FiniteFieldElement
     },
     Infinity
+}
+
+impl Display for EllipticCurvePoint {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let EllipticCurvePoint::Point { x, y, a, b } = self {
+            write!(f, "({:x}, {:x})", x.value, y.value)
+        } else {
+            write!(f, "Infinity")
+        }
+    }
 }
 
 impl EllipticCurvePoint {

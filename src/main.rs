@@ -37,17 +37,20 @@ fn main() {
     };
 
     let private_key = Encryption::get_private_key();
-    println!("private_key: {:?}", private_key);
+    println!("private_key: {:x}", private_key);
     let public_key = encryption.get_public_key(private_key);
-    println!("public_key: {:?}", public_key);
+    println!("public_key: {}", public_key);
 
-    let ten = encryption.plain_to_ec_point(U512::from(13u32));
+    let ten = encryption.plain_to_ec_point(U512::from(10u32));
     let e_ten = encryption.encrypt(ten, public_key, None);
+    println!("10 -> {}", e_ten.data);
 
-    let two = encryption.plain_to_ec_point(U512::from(27000u32));
+    let two = encryption.plain_to_ec_point(U512::from(2u32));
     let e_two = encryption.encrypt(two, public_key, None);
+    println!("2 -> {}", e_two.data);
 
-    println!("{:?}", encryption.ec_point_to_plain(Encryption::decrypt(e_ten + e_two, private_key)));
+    println!("10 + 2 -> {}", (e_ten + e_two).data);
+    println!("decrypt: {:?}", encryption.ec_point_to_plain(Encryption::decrypt(e_ten + e_two, private_key)));
 
     /*
     let twenty = encryption.plain_to_ec_point(U512::from(12u8));

@@ -1,4 +1,4 @@
-use std::ops::Add;
+use std::ops::{Add, Sub};
 
 use primitive_types::{U512, U256};
 
@@ -7,7 +7,7 @@ use rand_chacha::{ChaCha20Rng, rand_core::{SeedableRng, RngCore}};
 
 use super::elliptic_curve::{EllipticCurve, EllipticCurvePoint};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Encryption {
     pub ellictic_curve: EllipticCurve,
     pub base_point: EllipticCurvePoint,
@@ -15,7 +15,7 @@ pub struct Encryption {
     pub plain_mapping: Vec<EllipticCurvePoint>
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct EncryptedEllipticCurvePoint {
     pub data: EllipticCurvePoint,
     pub rp: EllipticCurvePoint
@@ -28,6 +28,17 @@ impl Add for EncryptedEllipticCurvePoint {
         Self {
             data: self.data + rhs.data,
             rp: self.rp + rhs.rp
+        }
+    }
+}
+
+impl Sub for EncryptedEllipticCurvePoint {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self {
+            data: self.data  + (-rhs.data),
+            rp: self.rp + (-rhs.rp)
         }
     }
 }
