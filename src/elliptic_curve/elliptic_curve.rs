@@ -1,4 +1,4 @@
-use std::{ops::{Add, Mul, Neg}, fmt::Display};
+use std::{ops::{Add, Mul, Neg}, fmt::Display, sync::mpsc};
 
 use primitive_types::U512;
 
@@ -78,8 +78,18 @@ impl Add for EllipticCurvePoint {
                         }
 
                         let l = if x1 == x2 && y1 == y2 {
-                            let t = x1 * x1 * FiniteFieldElement::new(U512::from(3), p) + a;
-                            let u = y1 * FiniteFieldElement::new(U512::from(2), p);
+                            let (t_tx, t_rx) = mpsc::channel();
+                            let (u_tx, u_rx) = mpsc::channel();
+                            std::thread::spawn(move || {
+                                let val = x1 * x1 * FiniteFieldElement::new(U512::from(3u8), p) + a;
+                                t_tx.send(val).unwrap();
+                            });
+                            std::thread::spawn(move || {
+                                let val = y1 * FiniteFieldElement::new(U512::from(2), p);
+                                u_tx.send(val).unwrap();
+                            });
+                            let t = t_rx.recv().unwrap();
+                            let u = u_rx.recv().unwrap();
                             let a = t / u;
                             a
                         } else {

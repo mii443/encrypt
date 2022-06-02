@@ -1,4 +1,4 @@
-use std::ops::{Add, Sub};
+use std::{ops::{Add, Sub}, sync::mpsc, thread};
 
 use primitive_types::{U512, U256};
 
@@ -117,7 +117,24 @@ impl Encryption {
             Self::random()
         };
 
-        EncryptedEllipticCurvePoint { data: message + public_key * ra, rp: self.base_point * ra }
+        let (data_tx, data_rx) = mpsc::channel();
+        let (rp_tx, rp_rx) = mpsc::channel();
+
+        let s = self.clone();
+        thread::spawn(move || {
+            let val = s.base_point * ra;
+            rp_tx.send(val).unwrap();
+        });
+
+        thread::spawn(move || {
+            let val = message + public_key * ra;
+            data_tx.send(val).unwrap();
+        });
+
+        let data_received = data_rx.recv().unwrap();
+        let rp_received = rp_rx.recv().unwrap();
+
+        EncryptedEllipticCurvePoint { data: data_received, rp: rp_received }
     }
 
     pub fn get_public_key(&self, private_key: U512) -> EllipticCurvePoint {
