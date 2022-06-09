@@ -46,6 +46,7 @@ impl EllipticCurvePoint {
             EllipticCurvePoint::Infinity => true,
         }
     }
+
 }
 
 impl Neg for EllipticCurvePoint {

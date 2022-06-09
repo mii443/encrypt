@@ -1,8 +1,11 @@
-use encrypt::{elliptic_curve::{elliptic_curve::EllipticCurve, encryption::Encryption}, common::finite_field::FiniteFieldElement};
+use bigdecimal::num_bigint::BigInt;
+use encrypt::{elliptic_curve::{elliptic_curve::EllipticCurve, encryption::Encryption}, common::{finite_field::FiniteFieldElement, math::random_n_q}};
 use primitive_types::U512;
 
 fn main() {
     println!("Encryption Library");
+
+    println!("{}", random_n_q(BigInt::from(23)));
 
     let p = U512::from_str_radix("115792089237316195423570985008687907853269984665640564039457584007908834671663", 10).unwrap();
 
@@ -41,7 +44,7 @@ fn main() {
     let public_key = encryption.get_public_key(private_key);
     println!("public_key: {}", public_key);
 
-    for x in 0..100 {
+    for x in 0..10 {
         let ten = encryption.plain_to_ec_point(U512::from(10u32));
         let e_ten = encryption.encrypt(ten, public_key, None);
         println!("10 -> {}", e_ten.data);
