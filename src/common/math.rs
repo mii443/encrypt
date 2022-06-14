@@ -44,13 +44,33 @@ pub fn random_n_q(p: BigInt) -> BigInt {
     let mut i = BigInt::one();
     let k = (p.clone() - BigInt::one()) >> 1i32;
     while i < p {
-        println!("pm {:?}", FiniteFieldElement::new(bigint_to_u512(i.clone()), bigint_to_u512(p.clone())).pow(bigint_to_u512(k.clone())).value);
         if bigint_to_u512(pow_mod(i.clone(),k.clone(),p.clone())) != U512::one() {
             break;
         }
         i += BigInt::one();
     }
     i
+}
+
+pub fn mod_sqrt(a: BigInt, p: BigInt) -> BigInt {
+    if pow_mod(a.clone(), (p.clone() - BigInt::one()) >> 1u8, p.clone()) != BigInt::one() {
+        return -BigInt::one();
+    }
+
+    let r = (p.clone() - BigInt::one()) >> 1u8;
+    let b = random_n_q(p.clone());
+    let mut x = r.clone();
+    let mut y = BigInt::zero();
+
+    while (x.clone() & BigInt::one()) != BigInt::one() {
+        x = x >> 1u8;
+        y = y >> 1u8;
+        if abs(pow_mod(a.clone(), x.clone(), p.clone()) * pow_mod(b.clone(), y.clone(), p.clone()), p.clone()) != BigInt::one() {
+            y += r.clone();
+        }
+    }
+
+    abs(pow_mod(a.clone(), (x.clone() + BigInt::one()) >> 1u8, p.clone()) * pow_mod(b.clone(), y.clone() >> 1u8, p.clone()), p.clone())
 }
 
 pub fn mod_inv(a: BigInt, m: BigInt) -> BigInt {

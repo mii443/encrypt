@@ -1,11 +1,12 @@
 use bigdecimal::num_bigint::BigInt;
-use encrypt::{elliptic_curve::{elliptic_curve::EllipticCurve, encryption::Encryption}, common::{finite_field::FiniteFieldElement, math::random_n_q}};
+use encrypt::{elliptic_curve::{elliptic_curve::EllipticCurve, encryption::Encryption}, common::{finite_field::FiniteFieldElement, math::{random_n_q, mod_sqrt}}};
 use primitive_types::U512;
 
 fn main() {
     println!("Encryption Library");
 
     println!("{}", random_n_q(BigInt::from(23)));
+    println!("{}", mod_sqrt(BigInt::from(4), BigInt::from(23)));
 
     let p = U512::from_str_radix("115792089237316195423570985008687907853269984665640564039457584007908834671663", 10).unwrap();
 

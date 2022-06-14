@@ -1,4 +1,4 @@
-use std::{ops::{Add, Mul, Neg}, fmt::Display, sync::mpsc};
+use std::{ops::{Add, Mul, Neg}, fmt::Display};
 
 use primitive_types::U512;
 
@@ -27,9 +27,47 @@ pub enum EllipticCurvePoint {
     Infinity
 }
 
+impl EllipticCurvePoint {
+    pub fn lambda(p: EllipticCurvePoint, q: EllipticCurvePoint) -> FiniteFieldElement {
+        let (x1, y1) = match p {
+            EllipticCurvePoint::Point { x, y, .. } => (x,y),
+            _ => panic!("P is inifinity.")
+        };
+
+        let (x2, y2) = match q {
+            EllipticCurvePoint::Point { x, y, .. } => (x,y),
+            _ => panic!("Q is inifinity.")
+        };
+
+        (y2 - y1) / (x2 - x1)
+    }
+
+    pub fn l(p: EllipticCurvePoint, q: EllipticCurvePoint, x: FiniteFieldElement, y: FiniteFieldElement) -> FiniteFieldElement {
+        let (x1, y1) = match p {
+            EllipticCurvePoint::Point { x, y, .. } => (x,y),
+            _ => panic!("P is inifinity.")
+        };
+
+        y - (Self::lambda(p, q) * (x - x1) + y1)
+    }
+
+    pub fn v(r: EllipticCurvePoint, x: FiniteFieldElement) -> FiniteFieldElement {
+        let xr = match r {
+            EllipticCurvePoint::Point { x, .. } => x,
+            _ => panic!("R is inifinity.")
+        };
+
+        x - xr
+    }
+
+    pub fn g(p: EllipticCurvePoint, q: EllipticCurvePoint, x: FiniteFieldElement, y: FiniteFieldElement) -> FiniteFieldElement {
+        Self::l(p, q, x, y) / Self::v(p + q, x)
+    }
+}
+
 impl Display for EllipticCurvePoint {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let EllipticCurvePoint::Point { x, y, a, b } = self {
+        if let EllipticCurvePoint::Point { x, y, .. } = self {
             write!(f, "({:x}, {:x})", x.value, y.value)
         } else {
             write!(f, "Infinity")
@@ -79,18 +117,8 @@ impl Add for EllipticCurvePoint {
                         }
 
                         let l = if x1 == x2 && y1 == y2 {
-                            let (t_tx, t_rx) = mpsc::channel();
-                            let (u_tx, u_rx) = mpsc::channel();
-                            std::thread::spawn(move || {
-                                let val = x1 * x1 * FiniteFieldElement::new(U512::from(3u8), p) + a;
-                                t_tx.send(val).unwrap();
-                            });
-                            std::thread::spawn(move || {
-                                let val = y1 * FiniteFieldElement::new(U512::from(2), p);
-                                u_tx.send(val).unwrap();
-                            });
-                            let t = t_rx.recv().unwrap();
-                            let u = u_rx.recv().unwrap();
+                            let t = x1 * x1 * FiniteFieldElement::new(U512::from(3u8), p) + a;
+                            let u = y1 * FiniteFieldElement::new(U512::from(2), p);
                             let a = t / u;
                             a
                         } else {
