@@ -1,4 +1,4 @@
-use std::{ops::{Add, Sub, Mul, AddAssign, SubAssign, Div, Neg}, fmt::Debug};
+use std::{ops::{Add, Sub, Mul, AddAssign, SubAssign, Div, Neg}, fmt::{Debug, Display}};
 
 use bigdecimal::{num_bigint::BigInt, Num};
 use primitive_types::U512;
@@ -14,6 +14,12 @@ pub struct FiniteFieldElement {
 impl FiniteFieldElement {
     pub fn new(value: U512, p: U512) -> Self {
         Self { value, p }
+    }
+
+    pub fn inverse(&self) -> Self {
+        let left = BigInt::from_str_radix(&format!("{}", self.value), 10).unwrap();
+        let right = BigInt::from_str_radix(&format!("{}", self.p), 10).unwrap();
+        Self::new(U512::from_str_radix(&format!("{}", mod_inv(left, right)), 10).unwrap(), self.p)
     }
 }
 
@@ -34,6 +40,12 @@ impl FiniteFieldElement {
             i -= 1;
         }
         a1
+    }
+}
+
+impl Display for FiniteFieldElement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.value)
     }
 }
 
