@@ -10,3 +10,4 @@ bigdecimal = "0.3.0"
 primitive-types = "0.11.1"
 rand = {version = "0.7.3"}
 rand_chacha = "*"
+gpsl = { path = "./gpsl" }
