@@ -113,6 +113,7 @@ impl Tokenizer {
             String::from("-="),
             String::from("*="),
             String::from("/="),
+            String::from("$"),
             String::from("+"),
             String::from("-"),
             String::from("*"),
@@ -123,6 +124,8 @@ impl Tokenizer {
             String::from("}"),
             String::from("("),
             String::from(")"),
+            String::from("["),
+            String::from("]"),
             String::from("=="),
             String::from("!="),
             String::from(">="),
@@ -152,7 +155,7 @@ impl Tokenizer {
                         Ok(t) => t,
                         Err(_) => String::from(""),
                     };
-                    source.get_char(is('"'));
+                    source.get_char(is('"'))?;
                     self.tokens.push(Token {
                         kind: TokenKind::TEXT,
                         str: text,

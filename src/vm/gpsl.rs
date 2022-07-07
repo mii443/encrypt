@@ -1,38 +1,35 @@
+use crate::external_function::{ExternalFuncReturn, ExternalFuncStatus};
 use crate::node::*;
-use crate::parser::*;
+use crate::permission::Permission;
 use crate::source::Source;
-use crate::tokenizer::*;
 use crate::variable::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::string::*;
-use uuid::Uuid;
 
-#[derive(PartialEq)]
-pub enum ExternalFuncStatus {
-    SUCCESS,
-    NOTFOUND,
-    ERROR,
-}
-
-pub struct ExternalFuncReturn {
-    pub status: ExternalFuncStatus,
-    pub value: Option<Variable>
+#[derive(Clone, Debug)]
+pub struct Block {
+    pub accept: Vec<Permission>,
+    pub reject: Vec<Permission>,
+    pub variables: HashMap<String, LocalVariable>,
+    pub is_split: bool
 }
 
 pub struct GPSL {
-    pub functions: Option<Vec<Box<Node>>>,
+    pub functions: Option<HashMap<String, Box<Node>>>,
     pub global_variables: Vec<Variable>,
     pub source: Source,
-    pub l_vars: HashMap<String, LocalVariable>,
-    pub external_func: Vec<fn(String, Vec<Variable>) -> ExternalFuncReturn>
+    pub blocks: VecDeque<Block>,
+    pub external_func: Vec<fn(String, Vec<Variable>, Vec<Permission>, Vec<Permission>) -> ExternalFuncReturn>
 }
 
+#[derive(Clone, Debug)]
 pub struct LocalVariable {
     pub name: String,
     pub value: Variable,
     pub status: VariableStatus,
 }
 
+#[derive(Clone, Debug)]
 pub struct VariableStatus {
     pub initialized: bool,
 }
@@ -44,14 +41,44 @@ impl VariableStatus {
 }
 
 impl GPSL {
-    pub fn new(source: Source, functions: Option<Vec<Box<Node>>>, external_func: Vec<fn(String, Vec<Variable>) -> ExternalFuncReturn>) -> GPSL {
+    pub fn new(source: Source, functions: Option<HashMap<String, Box<Node>>>, external_func: Vec<fn(String, Vec<Variable>, Vec<Permission>, Vec<Permission>) -> ExternalFuncReturn>) -> GPSL {
         GPSL {
             source,
             functions,
             global_variables: vec![],
-            l_vars: HashMap::new(),
+            blocks: VecDeque::new(),
             external_func
         }
+    }
+
+    pub fn get_local_var_mut(&mut self, name: &String) -> Option<&mut LocalVariable> {
+        for x in 0..self.blocks.len() {
+            if self.blocks[x].variables.contains_key(name) {
+                return self.blocks[x].variables.get_mut(name);
+            }
+
+            if self.blocks[x].is_split {
+                break
+            }
+        }
+        None
+    }
+
+    pub fn get_local_var(&mut self, name: &String) -> Option<LocalVariable> {
+        for x in 0..self.blocks.len() {
+            if self.blocks[x].variables.contains_key(name) {
+                if let Some(var) = self.blocks[x].variables.get(name).clone() {
+                    return Some(var.clone());
+                } else {
+                    return None;
+                }
+            }
+
+            if self.blocks[x].is_split {
+                break
+            }
+        }
+        None
     }
 
     pub fn extract_number(node: Variable) -> Result<usize, String> {
@@ -78,32 +105,53 @@ impl GPSL {
                 }
 
                 if let Some(functions) = self.functions.clone() {
-                    for function in functions {
-                        match *function {
-                            Node::Function { name, body, args } => {
-                                if name == function_name {
-                                    for program in body {
-                                        if let Ok(Some(res)) = self.evaluate(program) {
-                                            match res {
-                                                Variable::Return { value } => {
-                                                    return Ok(Some(*value));
-                                                }
-                                                _ => {}
-                                            }
+                    debug!("functions: {:?}", functions.iter().map(|f| format!("{},", f.0)).collect::<String>());
+                    debug!("{}: {}", &function_name, functions.contains_key(&function_name));
+                    if functions.contains_key(&function_name) {
+                        if let Node::Function { body, .. } = &*(functions[&function_name]) {
+                            for program in body {
+                                let block = {
+                                    let blocks = self.blocks.clone();
+                                    blocks.front().unwrap().clone()
+                                };
+
+                                self.blocks.push_front(Block {
+                                    accept: block.accept.clone(),
+                                    reject: block.reject.clone(),
+                                    variables: HashMap::new(),
+                                    is_split: true
+                                });
+
+                                let res = self.evaluate(Box::new(*program.clone()));
+
+                                if let Ok(Some(res)) = res {
+                                    match res {
+                                        Variable::Return { value } => {
+                                            return Ok(Some(*value));
                                         }
+                                        _ => {}
                                     }
-                                    return Ok(None);
+                                } else if let Err(err) = res {
+                                    return Err(err);
                                 }
-                            },
-                            _ => {}
+
+                                self.blocks.pop_front();
+                            }
                         }
+                        return Ok(None);
                     }
                 }
 
+                debug!("Searching external: {}, ({:?})", &function_name, args_value);
+
                 for func in f {
-                    let res = func(function_name.clone(), args_value.clone());
+                    let block = self.blocks.front().unwrap();
+                    let res = func(function_name.clone(), args_value.clone(), block.accept.clone(), block.reject.clone());
                     if res.status == ExternalFuncStatus::SUCCESS {
                         return Ok(res.value);
+                    }
+                    if res.status == ExternalFuncStatus::REJECTED {
+                        return Err("External function rejected.".to_string());
                     }
                 }
 
@@ -121,13 +169,15 @@ impl GPSL {
             }
             Node::Operator { kind, lhs, rhs } => {
                 if kind == NodeKind::ASSIGN {
+                    debug!("Assign: {:?}", self.blocks.front());
+
                     let rhs = self.evaluate(rhs);
 
                     if let Ok(Some(rhs)) = rhs {
                         match *(lhs.clone()) {
                             Node::Lvar { value } => {
-                                self.l_vars.get_mut(&value).unwrap().value = rhs;
-                                self.l_vars.get_mut(&value).unwrap().status.initialized = true
+                                self.get_local_var_mut(&value).unwrap().value = rhs;
+                                self.get_local_var_mut(&value).unwrap().status.initialized = true;
                             }
                             _ => {}
                         }
@@ -201,7 +251,7 @@ impl GPSL {
                                     Err(err) => { Err(err) }
                                 }
                             },
-        
+
                             NodeKind::EQ => {
                                 if lhs == rhs {
                                     Ok(Some(Variable::Number {
@@ -276,7 +326,7 @@ impl GPSL {
                 }
             }
             Node::Lvar { value } => {
-                return Ok(Some(self.l_vars.get(&value).unwrap().value.clone()));
+                return Ok(Some(self.get_local_var(&value).unwrap().value.clone()));
             }
             Node::Return { lhs } => {
                 if let Ok(Some(lhs)) = self.evaluate(lhs) {
@@ -299,7 +349,7 @@ impl GPSL {
                     } {
                         if let Ok(Some(res)) = self.evaluate(stmt) {
                             match res.clone() {
-                                Variable::Return { value } => {
+                                Variable::Return { .. } => {
                                     return Ok(Some(res));
                                 }
                                 _ => {}
@@ -310,7 +360,7 @@ impl GPSL {
                             Some(else_stmt) => {
                                 if let Ok(Some(res)) = self.evaluate(else_stmt) {
                                     match res.clone() {
-                                        Variable::Return { value } => {
+                                        Variable::Return { .. } => {
                                             return Ok(Some(res));
                                         }
                                         _ => {}
@@ -370,13 +420,13 @@ impl GPSL {
                             }
                         }
                     },
-                    None => { 
+                    None => {
                         Variable::Number {
                             value: 1
-                        } 
+                        }
                     }
                 };
-                
+
                 while match cond {
                     Variable::Number { value } => value == 1,
                     _ => false
@@ -398,28 +448,46 @@ impl GPSL {
                                 }
                             }
                         },
-                        None => { 
+                        None => {
                             Variable::Number {
                                 value: 1
-                            } 
+                            }
                         }
                     };
                 }
 
                 return Ok(None);
             }
-            Node::Block { stmts } => {
+            Node::Block { stmts, permission } => {
+                let accept = self.blocks.front().unwrap().accept.clone();
+                let reject = self.blocks.front().unwrap().reject.clone();
+                let (accept, reject) = if let Node::Permission { accept, reject } = *permission.unwrap_or(Box::new(Node::None)) {
+                    (accept.iter().map(|p| Permission::from_string(p)).collect(), reject.iter().map(|p| Permission::from_string(p)).collect())
+                } else {
+                    (accept, reject)
+                };
+
+                self.blocks.push_front(Block {
+                    accept: accept,
+                    reject: reject,
+                    variables: HashMap::new(),
+                    is_split: false
+                });
+
                 for stmt in stmts {
                     let ret = self.evaluate(stmt)?;
                     if let Some(ret) = ret {
                         match ret.clone() {
-                            Variable::Return { value } => {
+                            Variable::Return { .. } => {
                                 return Ok(Some(ret));
                             }
                             _ => {}
                         }
                     }
                 }
+
+                self.blocks.pop_front();
+
                 return Ok(None);
             }
             Node::Define { name, var_type } => {
@@ -434,7 +502,7 @@ impl GPSL {
                 } else {
                     return Err(format!("{}: 未知の型です。", var_type));
                 };
-                self.l_vars.insert(
+                self.blocks.front_mut().unwrap().variables.insert(
                     name.clone(),
                     LocalVariable {
                         name,
@@ -442,34 +510,38 @@ impl GPSL {
                         status: VariableStatus::default(),
                     },
                 );
+
+                debug!("Define: {:?}", self.blocks.front());
+
                 return Ok(None);
             }
             _ => { Ok(None) },
         }
     }
 
-    pub fn run(&mut self, function_name: String, function_args: Vec<Box<Node>>) -> Result<Variable, String> {
+    pub fn run(&mut self, function_name: String, _: Vec<Box<Node>>) -> Result<Variable, String> {
+        debug!("functions: {:?}", self.functions);
         debug!("searching {}", function_name);
-
+        self.blocks.push_front(Block {
+            accept: vec![Permission::Administrator, Permission::StdIo],
+            reject: vec![],
+            variables: HashMap::new(),
+            is_split: true
+        });
         if let Some(functions) = self.functions.clone() {
-            for function in functions {
-                match *function {
-                    Node::Function { name, body, args } => {
-                        if name == function_name {
-                            debug!("running: {}", function_name);
-                            for program in body {
-                                if let Ok(Some(res)) = self.evaluate(program) {
-                                    match res {
-                                        Variable::Return { value } => {
-                                            return Ok(*value);
-                                        }
-                                        _ => {}
-                                    }
-                                }
+            if let Node::Function { body, .. } = &*(functions[&function_name]) {
+                for program in body {
+                    let res = self.evaluate(Box::new(*program.clone()));
+                    if let Ok(Some(res)) = res {
+                        match res {
+                            Variable::Return { value } => {
+                                return Ok(*value);
                             }
+                            _ => {}
                         }
-                    },
-                    _ => {}
+                    } else if let Err(err) = res {
+                        return Err(err);
+                    }
                 }
             }
         }

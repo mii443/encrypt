@@ -10,11 +10,14 @@ pub struct Parser {
 }
 
 impl Parser {
-    pub fn functions(&mut self) -> Result<Vec<Box<Node>>, String> {
-        let mut nodes: Vec<Box<Node>> = vec![];
+    pub fn functions(&mut self) -> Result<HashMap<String, Box<Node>>, String> {
+        let mut nodes: HashMap<String, Box<Node>> = HashMap::new();
         loop {
             if self.tokenizer.current_token().kind != TokenKind::EOF {
-                nodes.push(self.function()?);
+                let function = self.function()?;
+                if let Node::Function{name, .. } = *function.clone() {
+                    nodes.insert(name, function);
+                }
             } else {
                 return Ok(nodes);
             }
@@ -40,6 +43,7 @@ impl Parser {
                 self.tokenizer.consume_kind_str(TokenKind::RESERVED, String::from(","));
                 args.insert(name, type_str);
             }
+
             let mut nodes: Vec<Box<Node>> = vec![];
             debug!("parsing body node");
             loop {
@@ -73,13 +77,13 @@ impl Parser {
     }
 
     /*
-        stmt: let 
-            | block 
-            | return 
-            | if 
-            | while 
-            | for 
-            | expr SEMICOLON 
+        stmt: let
+            | block
+            | return
+            | if
+            | while
+            | for
+            | expr SEMICOLON
             ;
     */
     pub fn stmt(&mut self) -> Result<Box<Node>, String> {
@@ -99,9 +103,16 @@ impl Parser {
             }));
         }
 
+        debug!("parsing permission");
+        let permission = if self.tokenizer.current_token().str == "$" {
+            Some(self.permission()?)
+        } else {
+            None
+        };
+
         if self
             .tokenizer
-            .consume_kind_str(TokenKind::RESERVED, String::from("{"))
+            .consume_kind_str(TokenKind::RESERVED, String::from("{")) || permission != None
         {
             let mut stmts: Vec<Box<Node>> = vec![];
             loop {
@@ -109,7 +120,7 @@ impl Parser {
                     .tokenizer
                     .consume_kind_str(TokenKind::RESERVED, String::from("}"))
                 {
-                    return Ok(Box::new(Node::Block { stmts }));
+                    return Ok(Box::new(Node::Block { stmts, permission: permission }));
                 } else {
                     stmts.push(self.stmt()?);
                 }
@@ -194,6 +205,39 @@ impl Parser {
         let node = self.expr();
         self.tokenizer.expect(String::from(";"))?;
         return node;
+    }
+
+    /*
+        permission: DOLLER LPAREN ( IDENT LBRACKET ( IDENT COMMA? )* RBRACKET COMMA? )* RPAREN ;
+    */
+    pub fn permission(&mut self) -> Result<Box<Node>, String> {
+        self.tokenizer.expect(String::from("$"))?;
+        self.tokenizer.expect(String::from("("))?;
+
+        let mut accept: Vec<String> = vec![];
+        let mut reject: Vec<String> = vec![];
+
+        while !self.tokenizer.consume_kind_str(TokenKind::RESERVED, String::from(")")) {
+            let name = self.tokenizer.expect_ident()?;
+            if name != "accept" && name != "reject" {
+                return Err(String::from(format!("Unexpected: {}", name)));
+            }
+            self.tokenizer.consume_kind_str(TokenKind::RESERVED, String::from("["));
+            while !self.tokenizer.consume_kind_str(TokenKind::RESERVED, String::from("]")) {
+                let permission = self.tokenizer.expect_ident()?;
+                self.tokenizer.consume_kind_str(TokenKind::RESERVED, String::from(","));
+
+                if name == "accept" {
+                    accept.push(permission);
+                } else if name == "reject" {
+                    reject.push(permission);
+                }
+            }
+
+            self.tokenizer.consume_kind_str(TokenKind::RESERVED, String::from(","));
+        }
+
+        Ok(Box::new(Node::Permission { accept, reject }))
     }
 
     /*
@@ -329,11 +373,11 @@ impl Parser {
                     args.push(self.unary()?);
                     self.tokenizer.consume(String::from(","));
                 }
-                
+
                 self.tokenizer.expect(String::from(")"))?;
                 return Ok(Box::new(Node::Call {
-                  name: node.clone(),
-                  args: args,
+                    name: node.clone(),
+                    args: args,
                 }))
             }
             return Ok(Node::new_lvar_node(node.clone()));
@@ -351,9 +395,9 @@ impl Parser {
     }
 
     /*
-        unary: ADD primary 
-            | SUB primary 
-            | primary 
+        unary: ADD primary
+            | SUB primary
+            | primary
             ;
     */
     pub fn unary(&mut self) -> Result<Box<Node>, String> {

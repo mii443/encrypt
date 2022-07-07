@@ -1,5 +1,14 @@
-fn main() {
-    let a: String;
-    a = "test";
-    println(a);
+
+fn untrusted_function(a: num) $(accept[StdIo]) {
+    println("test");
+}
+
+fn main() $(accept[Administrator, StdIo]) {
+    println("1");
+
+    $(accept[StdIo], reject[Administrator]) {
+        untrusted_function();
+    }
+
+    println("2");
 }

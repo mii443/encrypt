@@ -20,6 +20,10 @@ pub enum Node {
         args: HashMap<String, String>,
         body: Vec<Box<Node>>
     },
+    Permission {
+        accept: Vec<String>,
+        reject: Vec<String>
+    },
     Operator {
         kind: NodeKind,
         lhs: Box<Node>,
@@ -54,15 +58,17 @@ pub enum Node {
     },
     Block {
         stmts: Vec<Box<Node>>,
+        permission: Option<Box<Node>>
     },
     Define {
         name: String,
         var_type: String,
     },
     Call {
-      name: String,
-      args: Vec<Box<Node>>,
-    }
+        name: String,
+        args: Vec<Box<Node>>,
+    },
+    None
 }
 
 impl Node {

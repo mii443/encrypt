@@ -1,7 +1,7 @@
 use gpsl::{
-    gpsl::GPSL,
+    vm::gpsl::GPSL,
     source::Source,
-    std::*,
+    external_function::*,
     tokenizer::Tokenizer,
     parser::Parser
 };
@@ -14,7 +14,7 @@ fn main() {
     let mut source = Source::new(fs::read_to_string(&(args.last().unwrap())).expect("Cannot read file."));
 
     let mut tokenizer = Tokenizer::new();
-    tokenizer.tokenize(&mut source);
+    tokenizer.tokenize(&mut source).unwrap();
 
     let mut parser = Parser {
         tokenizer,

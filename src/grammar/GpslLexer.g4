@@ -5,6 +5,7 @@ WS
       -> skip
     ;
 
+DOLLER: '$' ;
 ADD: '+' ;
 SUB: '-' ;
 MUL: '*' ;
@@ -31,6 +32,8 @@ LPAREN: '(' ;
 RPAREN: ')' ;
 LCURL: '{' ;
 RCURL: '}' ;
+LBRACKET: '[' ;
+RBRACKET: ']' ;
 ARROW: '->' ;
 
 FN: 'fn' ;
