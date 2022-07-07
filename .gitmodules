@@ -1,0 +1,3 @@
+[submodule "gpsl"]
+	path = gpsl
+	url = https://github.com/morioka22/gpsl

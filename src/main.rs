@@ -1,26 +1,33 @@
 
 use encrypt::{elliptic_curve::elliptic_curve::EllipticCurvePoint, common::finite_field::FiniteFieldElement};
 use primitive_types::U512;
-
+/*
+[6139062701328441600, 
+[258929920560, 23709360], 
+[[Mod(3308825380872319861, 6139062703770505681), Mod(4839630718792142583, 6139062703770505681)], 
+[Mod(4767914906170010398, 6139062703770505681), Mod(2445476831433994309, 6139062703770505681)]]]
+ */
 fn main() {
-    let p = U512::from_str_radix("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFEE37", 16).unwrap();
+    let p = U512::from_str_radix("6717051393902806321", 10).unwrap();
 
     let secp256_k1_a = FiniteFieldElement::new(U512::from(0u8), p);
-    let secp256_k1_b = FiniteFieldElement::new(U512::from(3u8), p);
+    let secp256_k1_b = FiniteFieldElement::new(U512::from_str_radix("1603830326921046894", 10).unwrap(), p);
 
-    let g = {
-        let x = FiniteFieldElement::new(U512::from_str_radix("DB4FF10EC057E9AE26B07D0280B7F4341DA5D1B1EAE06C7D", 16).unwrap(), p);
-        let y = FiniteFieldElement::new(U512::from_str_radix("9B2F2F6D9C5628A7844163D015BE86344082AA88D95E2F9D", 16).unwrap(), p);
+    let P = {
+        let x = FiniteFieldElement::new(U512::from_str_radix("3410381082791005532", 10).unwrap(), p);
+        let y = FiniteFieldElement::new(U512::from_str_radix("3959394867921462649", 10).unwrap(), p);
         EllipticCurvePoint::Point { x, y, a: secp256_k1_a, b: secp256_k1_b }
     };
-    let p = g * U512::from_str_radix("2343432432243", 10).unwrap();
-    let q = g * U512::from_str_radix("4233434343432443243", 10).unwrap();
-    let r = U512::from_str_radix("FFFFFFFFFFFFFFFFFFFFFFFE26F2FC170F69466A74DEFD8D", 16).unwrap();
+    let Q = {
+        let x = FiniteFieldElement::new(U512::from_str_radix("6030658041738565471", 10).unwrap(), p);
+        let y = FiniteFieldElement::new(U512::from_str_radix("34549622697239310", 10).unwrap(), p);
+        EllipticCurvePoint::Point { x, y, a: secp256_k1_a, b: secp256_k1_b }
+    };
+    let r = U512::from_str_radix("1135596179020030", 10).unwrap();
 
-    let f = EllipticCurvePoint::weil(p, q, r);
-    let f1 = EllipticCurvePoint::weil(p.exp(U512::from(2u8)), q.exp(U512::from(1u8)), r);
+    let f = EllipticCurvePoint::weil(P, Q, r);
 
-    println!("{}", search(f, f1));
+    println!("{}", f);
 }
 
 pub fn search(base: FiniteFieldElement, target: FiniteFieldElement) -> U512 {
