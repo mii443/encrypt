@@ -1,5 +1,8 @@
 
+use std::{fs, collections::HashMap};
+
 use encrypt::{elliptic_curve::elliptic_curve::EllipticCurvePoint, common::finite_field::FiniteFieldElement};
+use gpsl::{source::Source, tokenizer::Tokenizer, vm::gpsl::GPSL, external_function::STD_FUNC};
 use primitive_types::U512;
 /*
 [6139062701328441600, 
@@ -7,6 +10,7 @@ use primitive_types::U512;
 [[Mod(3308825380872319861, 6139062703770505681), Mod(4839630718792142583, 6139062703770505681)], 
 [Mod(4767914906170010398, 6139062703770505681), Mod(2445476831433994309, 6139062703770505681)]]]
  */
+ /*
 fn main() {
     let p = U512::from_str_radix("6717051393902806321", 10).unwrap();
 
@@ -39,4 +43,43 @@ pub fn search(base: FiniteFieldElement, target: FiniteFieldElement) -> U512 {
         i += U512::one();
     }
     i
+}*/
+
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Args {
+    #[clap(short, long, value_parser)]
+    mode: String,
+
+    #[clap(short, long, value_parser)]
+    file: String,
+}
+
+fn main() {
+    let args = Args::parse();
+
+    match &*args.mode {
+        "gpsl" => {
+            let mut source = Source::new(fs::read_to_string(&(args.file)).expect("Cannot read file."));
+
+            let mut tokenizer = Tokenizer::new();
+            tokenizer.tokenize(&mut source).unwrap();
+        
+            let mut parser = gpsl::parser::Parser {
+                tokenizer,
+                local_vars: HashMap::new()
+            };
+        
+            let mut gpsl = GPSL::new(source, Some(parser.functions().unwrap()), vec![STD_FUNC]);
+            let res = gpsl.run("main".to_string(), vec![]);
+            if let Err(err) = res {
+                println!("Error: {:?}", err);
+            }
+        }
+        _ => {
+
+        }
+    }
 }

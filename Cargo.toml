@@ -11,3 +11,4 @@ primitive-types = "0.11.1"
 rand = {version = "0.7.3"}
 rand_chacha = "*"
 gpsl = { path = "./gpsl" }
+clap = { version = "3.2.8", features = ["derive"] }
