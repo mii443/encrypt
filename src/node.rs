@@ -20,6 +20,9 @@ pub enum Node {
         args: HashMap<String, String>,
         body: Vec<Box<Node>>
     },
+    Mode {
+        mode: String
+    },
     Permission {
         accept: Vec<String>,
         reject: Vec<String>
@@ -58,7 +61,8 @@ pub enum Node {
     },
     Block {
         stmts: Vec<Box<Node>>,
-        permission: Option<Box<Node>>
+        permission: Option<Box<Node>>,
+        mode: Option<Box<Node>>,
     },
     Define {
         name: String,
