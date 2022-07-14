@@ -110,6 +110,13 @@ impl Parser {
             None
         };
 
+        debug!("parsing mode");
+        let mode = if self.tokenizer.current_token().str == "#" {
+            Some(self.mode()?)
+        } else {
+            None
+        };
+
         if self
             .tokenizer
             .consume_kind_str(TokenKind::RESERVED, String::from("{")) || permission != None
@@ -120,7 +127,7 @@ impl Parser {
                     .tokenizer
                     .consume_kind_str(TokenKind::RESERVED, String::from("}"))
                 {
-                    return Ok(Box::new(Node::Block { stmts, permission: permission }));
+                    return Ok(Box::new(Node::Block { stmts, permission: permission, mode: mode }));
                 } else {
                     stmts.push(self.stmt()?);
                 }
@@ -205,6 +212,16 @@ impl Parser {
         let node = self.expr();
         self.tokenizer.expect(String::from(";"))?;
         return node;
+    }
+
+    /*
+        mode: SHARP IDENT ;
+     */
+    pub fn mode(&mut self) -> Result<Box<Node>, String> {
+        self.tokenizer.expect(String::from("#"))?;
+        let mode = self.tokenizer.current_token().clone();
+        self.tokenizer.expect_kind(TokenKind::IDENT)?;
+        return Ok(Box::new(Node::Mode { mode: mode.str }));
     }
 
     /*

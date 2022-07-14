@@ -458,7 +458,7 @@ impl GPSL {
 
                 return Ok(None);
             }
-            Node::Block { stmts, permission } => {
+            Node::Block { stmts, permission, mode } => {
                 let accept = self.blocks.front().unwrap().accept.clone();
                 let reject = self.blocks.front().unwrap().reject.clone();
                 let (accept, reject) = if let Node::Permission { accept, reject } = *permission.unwrap_or(Box::new(Node::None)) {
@@ -466,6 +466,8 @@ impl GPSL {
                 } else {
                     (accept, reject)
                 };
+
+                if let Node::Mode { mode } = *mode.unwrap_or(Box::new(Node::None)) {}
 
                 self.blocks.push_front(Block {
                     accept: accept,
