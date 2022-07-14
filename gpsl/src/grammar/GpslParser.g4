@@ -23,6 +23,7 @@ if: IF LPAREN expr RPAREN stmt (ELSE stmt)? ;
 while: WHILE LPAREN expr RPAREN stmt ;
 for: FOR LPAREN expr? SEMICOLON expr? SEMICOLON expr? RPAREN stmt ;
 
+mode: SHARP IDENT ;
 permission: DOLLER LPAREN ( IDENT LBRACKET ( IDENT COMMA? )* RBRACKET COMMA? )* RPAREN ;
 
 expr: assign ;

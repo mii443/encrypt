@@ -33,7 +33,12 @@ impl Tokenizer {
     }
 
     pub fn consume_kind_str(&mut self, kind: TokenKind, string: String) -> bool {
-        debug!("consume kind str {:?} {:?} {:?}", kind ,string, self.current_token());
+        debug!(
+            "consume kind str {:?} {:?} {:?}",
+            kind,
+            string,
+            self.current_token()
+        );
         return if self.current_token().kind == kind && self.current_token().str == string {
             self.cursor += 1;
             true
@@ -63,10 +68,7 @@ impl Tokenizer {
     pub fn expect_ident(&mut self) -> Result<String, String> {
         debug!("Expect IDENT {:?}", self.current_token());
         if self.current_token().kind != TokenKind::IDENT {
-            return Err(format!(
-                "Unexpected type : {:?}",
-                self.current_token().kind
-            ));
+            return Err(format!("Unexpected type : {:?}", self.current_token().kind));
         }
         let val = self.current_token().str.clone();
         self.cursor += 1;
@@ -113,6 +115,7 @@ impl Tokenizer {
             String::from("-="),
             String::from("*="),
             String::from("/="),
+            String::from("#"),
             String::from("$"),
             String::from("+"),
             String::from("-"),
@@ -159,7 +162,7 @@ impl Tokenizer {
                     self.tokens.push(Token {
                         kind: TokenKind::TEXT,
                         str: text,
-                        num: 0
+                        num: 0,
                     });
                     continue;
                 }

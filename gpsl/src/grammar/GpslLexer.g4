@@ -5,6 +5,7 @@ WS
       -> skip
     ;
 
+SHARP: '#' ;
 DOLLER: '$' ;
 ADD: '+' ;
 SUB: '-' ;

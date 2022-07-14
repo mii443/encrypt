@@ -11,7 +11,7 @@ pub struct Block {
     pub accept: Vec<Permission>,
     pub reject: Vec<Permission>,
     pub variables: HashMap<String, LocalVariable>,
-    pub is_split: bool
+    pub is_split: bool,
 }
 
 pub struct GPSL {
@@ -19,7 +19,8 @@ pub struct GPSL {
     pub global_variables: Vec<Variable>,
     pub source: Source,
     pub blocks: VecDeque<Block>,
-    pub external_func: Vec<fn(String, Vec<Variable>, Vec<Permission>, Vec<Permission>) -> ExternalFuncReturn>
+    pub external_func:
+        Vec<fn(String, Vec<Variable>, Vec<Permission>, Vec<Permission>) -> ExternalFuncReturn>,
 }
 
 #[derive(Clone, Debug)]
@@ -41,13 +42,19 @@ impl VariableStatus {
 }
 
 impl GPSL {
-    pub fn new(source: Source, functions: Option<HashMap<String, Box<Node>>>, external_func: Vec<fn(String, Vec<Variable>, Vec<Permission>, Vec<Permission>) -> ExternalFuncReturn>) -> GPSL {
+    pub fn new(
+        source: Source,
+        functions: Option<HashMap<String, Box<Node>>>,
+        external_func: Vec<
+            fn(String, Vec<Variable>, Vec<Permission>, Vec<Permission>) -> ExternalFuncReturn,
+        >,
+    ) -> GPSL {
         GPSL {
             source,
             functions,
             global_variables: vec![],
             blocks: VecDeque::new(),
-            external_func
+            external_func,
         }
     }
 
@@ -58,7 +65,7 @@ impl GPSL {
             }
 
             if self.blocks[x].is_split {
-                break
+                break;
             }
         }
         None
@@ -75,7 +82,7 @@ impl GPSL {
             }
 
             if self.blocks[x].is_split {
-                break
+                break;
             }
         }
         None
@@ -83,12 +90,8 @@ impl GPSL {
 
     pub fn extract_number(node: Variable) -> Result<usize, String> {
         match node {
-            Variable::Number { value } => {
-                Ok(value)
-            },
-            _ => {
-                Err(String::from("Not a number"))
-            }
+            Variable::Number { value } => Ok(value),
+            _ => Err(String::from("Not a number")),
         }
     }
 
@@ -105,8 +108,18 @@ impl GPSL {
                 }
 
                 if let Some(functions) = self.functions.clone() {
-                    debug!("functions: {:?}", functions.iter().map(|f| format!("{},", f.0)).collect::<String>());
-                    debug!("{}: {}", &function_name, functions.contains_key(&function_name));
+                    debug!(
+                        "functions: {:?}",
+                        functions
+                            .iter()
+                            .map(|f| format!("{},", f.0))
+                            .collect::<String>()
+                    );
+                    debug!(
+                        "{}: {}",
+                        &function_name,
+                        functions.contains_key(&function_name)
+                    );
                     if functions.contains_key(&function_name) {
                         if let Node::Function { body, .. } = &*(functions[&function_name]) {
                             for program in body {
@@ -119,7 +132,7 @@ impl GPSL {
                                     accept: block.accept.clone(),
                                     reject: block.reject.clone(),
                                     variables: HashMap::new(),
-                                    is_split: true
+                                    is_split: true,
                                 });
 
                                 let res = self.evaluate(Box::new(*program.clone()));
@@ -146,7 +159,12 @@ impl GPSL {
 
                 for func in f {
                     let block = self.blocks.front().unwrap();
-                    let res = func(function_name.clone(), args_value.clone(), block.accept.clone(), block.reject.clone());
+                    let res = func(
+                        function_name.clone(),
+                        args_value.clone(),
+                        block.accept.clone(),
+                        block.reject.clone(),
+                    );
                     if res.status == ExternalFuncStatus::SUCCESS {
                         return Ok(res.value);
                     }
@@ -157,16 +175,8 @@ impl GPSL {
 
                 Err(format!("Function not found: {}", function_name))
             }
-            Node::Text { value } => {
-                Ok(Some(Variable::Text {
-                    value
-                }))
-            }
-            Node::Number { value } => {
-                Ok(Some(Variable::Number {
-                    value
-                }))
-            }
+            Node::Text { value } => Ok(Some(Variable::Text { value })),
+            Node::Number { value } => Ok(Some(Variable::Number { value })),
             Node::Operator { kind, lhs, rhs } => {
                 if kind == NodeKind::ASSIGN {
                     debug!("Assign: {:?}", self.blocks.front());
@@ -191,132 +201,76 @@ impl GPSL {
                 if let Some(lhs) = lhs {
                     if let Some(rhs) = rhs {
                         match kind {
-                            NodeKind::ADD => {
-                                match GPSL::extract_number(lhs) {
-                                    Ok(lhs) => {
-                                        match GPSL::extract_number(rhs) {
-                                            Ok(rhs) => {
-                                                Ok(Some(Variable::Number {
-                                                    value: lhs + rhs
-                                                }))
-                                            }
-                                            Err(err) => { Err(err) }
-                                        }
-                                    }
-                                    Err(err) => { Err(err) }
-                                }
+                            NodeKind::ADD => match GPSL::extract_number(lhs) {
+                                Ok(lhs) => match GPSL::extract_number(rhs) {
+                                    Ok(rhs) => Ok(Some(Variable::Number { value: lhs + rhs })),
+                                    Err(err) => Err(err),
+                                },
+                                Err(err) => Err(err),
                             },
-                            NodeKind::DIV => {
-                                match GPSL::extract_number(lhs) {
-                                    Ok(lhs) => {
-                                        match GPSL::extract_number(rhs) {
-                                            Ok(rhs) => {
-                                                Ok(Some(Variable::Number {
-                                                    value: lhs / rhs
-                                                }))
-                                            }
-                                            Err(err) => { Err(err) }
-                                        }
-                                    }
-                                    Err(err) => { Err(err) }
-                                }
+                            NodeKind::DIV => match GPSL::extract_number(lhs) {
+                                Ok(lhs) => match GPSL::extract_number(rhs) {
+                                    Ok(rhs) => Ok(Some(Variable::Number { value: lhs / rhs })),
+                                    Err(err) => Err(err),
+                                },
+                                Err(err) => Err(err),
                             },
-                            NodeKind::MUL => {
-                                match GPSL::extract_number(lhs) {
-                                    Ok(lhs) => {
-                                        match GPSL::extract_number(rhs) {
-                                            Ok(rhs) => {
-                                                Ok(Some(Variable::Number {
-                                                    value: lhs * rhs
-                                                }))
-                                            }
-                                            Err(err) => { Err(err) }
-                                        }
-                                    }
-                                    Err(err) => { Err(err) }
-                                }
+                            NodeKind::MUL => match GPSL::extract_number(lhs) {
+                                Ok(lhs) => match GPSL::extract_number(rhs) {
+                                    Ok(rhs) => Ok(Some(Variable::Number { value: lhs * rhs })),
+                                    Err(err) => Err(err),
+                                },
+                                Err(err) => Err(err),
                             },
-                            NodeKind::SUB => {
-                                match GPSL::extract_number(lhs) {
-                                    Ok(lhs) => {
-                                        match GPSL::extract_number(rhs) {
-                                            Ok(rhs) => {
-                                                Ok(Some(Variable::Number {
-                                                    value: lhs - rhs
-                                                }))
-                                            }
-                                            Err(err) => { Err(err) }
-                                        }
-                                    }
-                                    Err(err) => { Err(err) }
-                                }
+                            NodeKind::SUB => match GPSL::extract_number(lhs) {
+                                Ok(lhs) => match GPSL::extract_number(rhs) {
+                                    Ok(rhs) => Ok(Some(Variable::Number { value: lhs - rhs })),
+                                    Err(err) => Err(err),
+                                },
+                                Err(err) => Err(err),
                             },
 
                             NodeKind::EQ => {
                                 if lhs == rhs {
-                                    Ok(Some(Variable::Number {
-                                        value: 1
-                                    }))
+                                    Ok(Some(Variable::Number { value: 1 }))
                                 } else {
-                                    Ok(Some(Variable::Number {
-                                        value: 0
-                                    }))
+                                    Ok(Some(Variable::Number { value: 0 }))
                                 }
-                            },
+                            }
                             NodeKind::NE => {
                                 if lhs != rhs {
-                                    Ok(Some(Variable::Number {
-                                        value: 1
-                                    }))
+                                    Ok(Some(Variable::Number { value: 1 }))
                                 } else {
-                                    Ok(Some(Variable::Number {
-                                        value: 0
-                                    }))
+                                    Ok(Some(Variable::Number { value: 0 }))
                                 }
-                            },
-                            NodeKind::LT => {
-                                match GPSL::extract_number(lhs) {
-                                    Ok(lhs) => {
-                                        match GPSL::extract_number(rhs) {
-                                            Ok(rhs) => {
-                                                if lhs < rhs {
-                                                    Ok(Some(Variable::Number {
-                                                        value: 1
-                                                    }))
-                                                } else {
-                                                    Ok(Some(Variable::Number {
-                                                        value: 0
-                                                    }))
-                                                }
-                                            }
-                                            Err(err) => { Err(err) }
+                            }
+                            NodeKind::LT => match GPSL::extract_number(lhs) {
+                                Ok(lhs) => match GPSL::extract_number(rhs) {
+                                    Ok(rhs) => {
+                                        if lhs < rhs {
+                                            Ok(Some(Variable::Number { value: 1 }))
+                                        } else {
+                                            Ok(Some(Variable::Number { value: 0 }))
                                         }
                                     }
-                                    Err(err) => { Err(err) }
-                                }
+                                    Err(err) => Err(err),
+                                },
+                                Err(err) => Err(err),
                             },
-                            NodeKind::LE => {
-                                match GPSL::extract_number(lhs) {
-                                    Ok(lhs) => {
-                                        match GPSL::extract_number(rhs) {
-                                            Ok(rhs) => {
-                                                if lhs <= rhs {
-                                                    Ok(Some(Variable::Number {
-                                                        value: 1
-                                                    }))
-                                                } else {
-                                                    Ok(Some(Variable::Number {
-                                                        value: 0
-                                                    }))
-                                                }
-                                            }
-                                            Err(err) => { Err(err) }
+                            NodeKind::LE => match GPSL::extract_number(lhs) {
+                                Ok(lhs) => match GPSL::extract_number(rhs) {
+                                    Ok(rhs) => {
+                                        if lhs <= rhs {
+                                            Ok(Some(Variable::Number { value: 1 }))
+                                        } else {
+                                            Ok(Some(Variable::Number { value: 0 }))
                                         }
                                     }
-                                    Err(err) => { Err(err) }
-                                }
+                                    Err(err) => Err(err),
+                                },
+                                Err(err) => Err(err),
                             },
-                            _ => Ok(None)
+                            _ => Ok(None),
                         }
                     } else {
                         Err(String::from("RHS Variable is null."))
@@ -331,7 +285,7 @@ impl GPSL {
             Node::Return { lhs } => {
                 if let Ok(Some(lhs)) = self.evaluate(lhs) {
                     return Ok(Some(Variable::Return {
-                        value: Box::new(lhs)
+                        value: Box::new(lhs),
                     }));
                 } else {
                     return Err(String::from("Cannot evaluate LHS."));
@@ -345,7 +299,7 @@ impl GPSL {
                 if let Ok(Some(condition)) = self.evaluate(condition) {
                     if match condition {
                         Variable::Number { value } => value == 1,
-                        _ => false
+                        _ => false,
                     } {
                         if let Ok(Some(res)) = self.evaluate(stmt) {
                             match res.clone() {
@@ -378,22 +332,18 @@ impl GPSL {
                 let mut cond = if let Some(condition) = self.evaluate(condition.clone())? {
                     condition
                 } else {
-                    Variable::Number {
-                        value: 0
-                    }
+                    Variable::Number { value: 0 }
                 };
 
                 while match cond {
                     Variable::Number { value } => value == 1,
-                    _ => false
+                    _ => false,
                 } {
                     self.evaluate(stmt.clone())?;
                     cond = if let Some(condition) = self.evaluate(condition.clone())? {
                         condition
                     } else {
-                        Variable::Number {
-                            value: 0
-                        }
+                        Variable::Number { value: 0 }
                     };
                 }
 
@@ -406,7 +356,9 @@ impl GPSL {
                 stmt,
             } => {
                 match init {
-                    Some(init) => {self.evaluate(init)?;},
+                    Some(init) => {
+                        self.evaluate(init)?;
+                    }
                     None => {}
                 }
 
@@ -415,26 +367,22 @@ impl GPSL {
                         if let Some(condition) = self.evaluate(condition)? {
                             condition
                         } else {
-                            Variable::Number {
-                                value: 0
-                            }
-                        }
-                    },
-                    None => {
-                        Variable::Number {
-                            value: 1
+                            Variable::Number { value: 0 }
                         }
                     }
+                    None => Variable::Number { value: 1 },
                 };
 
                 while match cond {
                     Variable::Number { value } => value == 1,
-                    _ => false
+                    _ => false,
                 } {
                     self.evaluate(stmt.clone())?;
 
                     match update.clone() {
-                        Some(update) => {self.evaluate(update)?;},
+                        Some(update) => {
+                            self.evaluate(update)?;
+                        }
                         None => {}
                     }
 
@@ -443,35 +391,45 @@ impl GPSL {
                             if let Some(condition) = self.evaluate(condition)? {
                                 condition
                             } else {
-                                Variable::Number {
-                                    value: 0
-                                }
-                            }
-                        },
-                        None => {
-                            Variable::Number {
-                                value: 1
+                                Variable::Number { value: 0 }
                             }
                         }
+                        None => Variable::Number { value: 1 },
                     };
                 }
 
                 return Ok(None);
             }
-            Node::Block { stmts, permission } => {
+            Node::Block {
+                stmts,
+                permission,
+                mode,
+            } => {
                 let accept = self.blocks.front().unwrap().accept.clone();
                 let reject = self.blocks.front().unwrap().reject.clone();
-                let (accept, reject) = if let Node::Permission { accept, reject } = *permission.unwrap_or(Box::new(Node::None)) {
-                    (accept.iter().map(|p| Permission::from_string(p)).collect(), reject.iter().map(|p| Permission::from_string(p)).collect())
+                let (accept, reject) = if let Node::Permission { accept, reject } =
+                    *permission.unwrap_or(Box::new(Node::None))
+                {
+                    (
+                        accept.iter().map(|p| Permission::from_string(p)).collect(),
+                        reject.iter().map(|p| Permission::from_string(p)).collect(),
+                    )
                 } else {
                     (accept, reject)
                 };
+
+                let mode = if let Node::Mode { mode } = *mode.unwrap_or(Box::new(Node::None)) {
+                    mode
+                } else {
+                    "".to_string()
+                };
+                println!("Mode: {}", mode);
 
                 self.blocks.push_front(Block {
                     accept: accept,
                     reject: reject,
                     variables: HashMap::new(),
-                    is_split: false
+                    is_split: false,
                 });
 
                 for stmt in stmts {
@@ -492,12 +450,10 @@ impl GPSL {
             }
             Node::Define { name, var_type } => {
                 let value = if var_type == "num" {
-                    Variable::Number {
-                        value: 0
-                    }
+                    Variable::Number { value: 0 }
                 } else if var_type == "String" {
                     Variable::Text {
-                        value: String::default()
+                        value: String::default(),
                     }
                 } else {
                     return Err(format!("{}: 未知の型です。", var_type));
@@ -515,7 +471,7 @@ impl GPSL {
 
                 return Ok(None);
             }
-            _ => { Ok(None) },
+            _ => Ok(None),
         }
     }
 
@@ -526,7 +482,7 @@ impl GPSL {
             accept: vec![Permission::Administrator, Permission::StdIo],
             reject: vec![],
             variables: HashMap::new(),
-            is_split: true
+            is_split: true,
         });
         if let Some(functions) = self.functions.clone() {
             if let Node::Function { body, .. } = &*(functions[&function_name]) {

@@ -15,7 +15,7 @@ impl Parser {
         loop {
             if self.tokenizer.current_token().kind != TokenKind::EOF {
                 let function = self.function()?;
-                if let Node::Function{name, .. } = *function.clone() {
+                if let Node::Function { name, .. } = *function.clone() {
                     nodes.insert(name, function);
                 }
             } else {
@@ -28,19 +28,27 @@ impl Parser {
         function: FN IDENT LPAREN (IDENT COLON IDENT COMMA?)* RPAREN (ARROW IDENT)? block ;
     */
     pub fn function(&mut self) -> Result<Box<Node>, String> {
-        if self.tokenizer.consume_kind_str(TokenKind::RESERVED, String::from("fn")) {
+        if self
+            .tokenizer
+            .consume_kind_str(TokenKind::RESERVED, String::from("fn"))
+        {
             debug!("parsing function");
             let func_name = self.tokenizer.current_token().clone();
             self.tokenizer.expect_kind(TokenKind::IDENT)?;
             let mut args = HashMap::new();
             self.tokenizer.expect(String::from("("))?;
             debug!("parsing args");
-            while !self.tokenizer.consume_kind_str(TokenKind::RESERVED, String::from(")")) {
+            while !self
+                .tokenizer
+                .consume_kind_str(TokenKind::RESERVED, String::from(")"))
+            {
                 debug!("consume argument");
                 let name = self.tokenizer.expect_ident()?;
-                self.tokenizer.consume_kind_str(TokenKind::RESERVED, String::from(":"));
+                self.tokenizer
+                    .consume_kind_str(TokenKind::RESERVED, String::from(":"));
                 let type_str = self.tokenizer.expect_ident()?;
-                self.tokenizer.consume_kind_str(TokenKind::RESERVED, String::from(","));
+                self.tokenizer
+                    .consume_kind_str(TokenKind::RESERVED, String::from(","));
                 args.insert(name, type_str);
             }
 
@@ -53,7 +61,7 @@ impl Parser {
                 return Ok(Box::new(Node::Function {
                     name: func_name.str,
                     args,
-                    body: nodes
+                    body: nodes,
                 }));
             }
         } else {
@@ -110,9 +118,17 @@ impl Parser {
             None
         };
 
+        debug!("parsing mode");
+        let mode = if self.tokenizer.current_token().str == "#" {
+            Some(self.mode()?)
+        } else {
+            None
+        };
+
         if self
             .tokenizer
-            .consume_kind_str(TokenKind::RESERVED, String::from("{")) || permission != None
+            .consume_kind_str(TokenKind::RESERVED, String::from("{"))
+            || permission != None
         {
             let mut stmts: Vec<Box<Node>> = vec![];
             loop {
@@ -120,7 +136,11 @@ impl Parser {
                     .tokenizer
                     .consume_kind_str(TokenKind::RESERVED, String::from("}"))
                 {
-                    return Ok(Box::new(Node::Block { stmts, permission: permission }));
+                    return Ok(Box::new(Node::Block {
+                        stmts,
+                        permission: permission,
+                        mode: mode,
+                    }));
                 } else {
                     stmts.push(self.stmt()?);
                 }
@@ -208,6 +228,17 @@ impl Parser {
     }
 
     /*
+        mode: SHARP IDENT ;
+    */
+    pub fn mode(&mut self) -> Result<Box<Node>, String> {
+        self.tokenizer.expect(String::from("#"))?;
+        let mode = self.tokenizer.current_token().clone();
+        self.tokenizer.expect_kind(TokenKind::IDENT)?;
+        self.tokenizer.expect(String::from(";"))?;
+        return Ok(Box::new(Node::Mode { mode: mode.str }));
+    }
+
+    /*
         permission: DOLLER LPAREN ( IDENT LBRACKET ( IDENT COMMA? )* RBRACKET COMMA? )* RPAREN ;
     */
     pub fn permission(&mut self) -> Result<Box<Node>, String> {
@@ -217,15 +248,23 @@ impl Parser {
         let mut accept: Vec<String> = vec![];
         let mut reject: Vec<String> = vec![];
 
-        while !self.tokenizer.consume_kind_str(TokenKind::RESERVED, String::from(")")) {
+        while !self
+            .tokenizer
+            .consume_kind_str(TokenKind::RESERVED, String::from(")"))
+        {
             let name = self.tokenizer.expect_ident()?;
             if name != "accept" && name != "reject" {
                 return Err(String::from(format!("Unexpected: {}", name)));
             }
-            self.tokenizer.consume_kind_str(TokenKind::RESERVED, String::from("["));
-            while !self.tokenizer.consume_kind_str(TokenKind::RESERVED, String::from("]")) {
+            self.tokenizer
+                .consume_kind_str(TokenKind::RESERVED, String::from("["));
+            while !self
+                .tokenizer
+                .consume_kind_str(TokenKind::RESERVED, String::from("]"))
+            {
                 let permission = self.tokenizer.expect_ident()?;
-                self.tokenizer.consume_kind_str(TokenKind::RESERVED, String::from(","));
+                self.tokenizer
+                    .consume_kind_str(TokenKind::RESERVED, String::from(","));
 
                 if name == "accept" {
                     accept.push(permission);
@@ -234,7 +273,8 @@ impl Parser {
                 }
             }
 
-            self.tokenizer.consume_kind_str(TokenKind::RESERVED, String::from(","));
+            self.tokenizer
+                .consume_kind_str(TokenKind::RESERVED, String::from(","));
         }
 
         Ok(Box::new(Node::Permission { accept, reject }))
@@ -378,7 +418,7 @@ impl Parser {
                 return Ok(Box::new(Node::Call {
                     name: node.clone(),
                     args: args,
-                }))
+                }));
             }
             return Ok(Node::new_lvar_node(node.clone()));
         }
@@ -386,9 +426,7 @@ impl Parser {
         if self.tokenizer.current_token().kind == TokenKind::TEXT {
             let text = self.tokenizer.current_token().str.clone();
             self.tokenizer.consume_kind(TokenKind::TEXT);
-            return Ok(Box::new(Node::Text {
-                value: text,
-            }));
+            return Ok(Box::new(Node::Text { value: text }));
         }
 
         return Ok(Node::new_num_node(self.tokenizer.expect_number()?));
