@@ -2,7 +2,7 @@ use serde::Deserializer;
 
 use crate::gpsl::{permission::Permission, variable::Variable};
 use std::{
-    io::Read,
+    io::{BufRead, BufReader, Read, Write},
     net::TcpStream,
     sync::{Arc, Mutex},
 };
@@ -71,6 +71,7 @@ pub const STD_FUNC: fn(
             }
         }
         "receive" => {
+            println!("Waiting for client...");
             let mut buffer = String::default();
             let data = data.unwrap();
             let mut stream = data.stream.lock().unwrap();
@@ -79,10 +80,29 @@ pub const STD_FUNC: fn(
                 Some(stream) => stream,
                 None => panic!("Cannot access to tcp stream"),
             };
-            stream.read_to_string(&mut buffer).unwrap();
+            let mut reader = BufReader::new(stream);
+            reader.read_line(&mut buffer).unwrap();
             ExternalFuncReturn {
                 status: ExternalFuncStatus::SUCCESS,
                 value: Some(serde_json::from_str(&buffer).unwrap()),
+            }
+        }
+        "send" => {
+            let data = data.unwrap();
+            let mut stream = data.stream.lock().unwrap();
+
+            let stream = match &mut *stream {
+                Some(stream) => stream,
+                None => panic!("Cannot access to tcp stream"),
+            };
+
+            let value = serde_json::to_string(&args[0]).unwrap();
+
+            stream.write_fmt(format_args!("{}\n", value)).unwrap();
+
+            ExternalFuncReturn {
+                status: ExternalFuncStatus::SUCCESS,
+                value: None,
             }
         }
         _ => ExternalFuncReturn {

@@ -56,6 +56,9 @@ struct Args {
 
     #[clap(short, long, value_parser)]
     file: String,
+
+    #[clap(short, long, value_parser)]
+    ip: Option<String>,
 }
 
 fn listen_tcp_server(port: u16) -> TcpStream {
@@ -63,7 +66,6 @@ fn listen_tcp_server(port: u16) -> TcpStream {
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
-                println!("New connection: {}", stream.peer_addr().unwrap());
                 return stream;
             }
             Err(e) => {
@@ -76,34 +78,31 @@ fn listen_tcp_server(port: u16) -> TcpStream {
 
 fn main() {
     let args = Args::parse();
-    let s = serde_json::to_string(&Variable::Number { value: 0 });
-    println!("{}", s.unwrap());
 
-    match &*args.mode {
-        "gpsl" => {
-            let mut source =
-                Source::new(fs::read_to_string(&(args.file)).expect("Cannot read file."));
+    let mut source = Source::new(fs::read_to_string(&(args.file)).expect("Cannot read file."));
 
-            let mut tokenizer = Tokenizer::new();
-            tokenizer.tokenize(&mut source).unwrap();
+    let mut tokenizer = Tokenizer::new();
+    tokenizer.tokenize(&mut source).unwrap();
 
-            let mut parser = gpsl::parser::Parser {
-                tokenizer,
-                local_vars: HashMap::new(),
-            };
+    let mut parser = gpsl::parser::Parser {
+        tokenizer,
+        local_vars: HashMap::new(),
+    };
 
-            let stream = listen_tcp_server(8080);
-            let mut gpsl = GPSL::new(
-                source,
-                Some(parser.functions().unwrap()),
-                Arc::new(Mutex::new(Some(stream))),
-                vec![STD_FUNC],
-            );
-            let res = gpsl.run("main".to_string(), vec![]);
-            if let Err(err) = res {
-                println!("Error: {:?}", err);
-            }
-        }
-        _ => {}
+    let stream = match &*args.mode {
+        "server" => listen_tcp_server(8080),
+        "client" => TcpStream::connect(args.ip.unwrap()).unwrap(),
+        _ => panic!("Cannot start tcp stream."),
+    };
+
+    let mut gpsl = GPSL::new(
+        source,
+        Some(parser.functions().unwrap()),
+        Arc::new(Mutex::new(Some(stream))),
+        vec![STD_FUNC],
+    );
+    let res = gpsl.run("main".to_string(), vec![]);
+    if let Err(err) = res {
+        println!("Error: {:?}", err);
     }
 }
