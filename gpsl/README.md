@@ -1,1 +1,0 @@
-# General Purpose Simple Language

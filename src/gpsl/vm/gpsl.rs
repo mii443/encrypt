@@ -9,6 +9,7 @@ use log::*;
 use std::collections::{HashMap, VecDeque};
 use std::net::TcpStream;
 use std::string::*;
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug)]
 pub struct Block {
@@ -23,7 +24,7 @@ pub struct GPSL {
     pub global_variables: Vec<Variable>,
     pub source: Source,
     pub blocks: VecDeque<Block>,
-    pub tcp_stream: Option<TcpStream>,
+    pub tcp_stream: Arc<Mutex<Option<TcpStream>>>,
     pub external_func: Vec<
         fn(
             String,
@@ -57,7 +58,7 @@ impl GPSL {
     pub fn new(
         source: Source,
         functions: Option<HashMap<String, Box<Node>>>,
-        tcp_sream: Option<TcpStream>,
+        tcp_sream: Arc<Mutex<Option<TcpStream>>>,
         external_func: Vec<
             fn(
                 String,
@@ -185,7 +186,7 @@ impl GPSL {
                         block.accept.clone(),
                         block.reject.clone(),
                         Some(ExternalFuncCallData {
-                            stream: Some(self.tcp_stream.unwrap().try_clone().unwrap()),
+                            stream: self.tcp_stream.clone(),
                         }),
                     );
                     if res.status == ExternalFuncStatus::SUCCESS {

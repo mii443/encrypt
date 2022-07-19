@@ -3,6 +3,7 @@ use gpsl::variable::Variable;
 use gpsl::{external_function::STD_FUNC, parser::*, source::*, tokenizer::*, vm::gpsl::*};
 use primitive_types::U512;
 use std::net::{TcpListener, TcpStream};
+use std::sync::{Arc, Mutex};
 use std::{collections::HashMap, fs};
 /*
 [6139062701328441600,
@@ -95,7 +96,7 @@ fn main() {
             let mut gpsl = GPSL::new(
                 source,
                 Some(parser.functions().unwrap()),
-                Some(stream),
+                Arc::new(Mutex::new(Some(stream))),
                 vec![STD_FUNC],
             );
             let res = gpsl.run("main".to_string(), vec![]);

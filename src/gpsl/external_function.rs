@@ -1,7 +1,11 @@
 use serde::Deserializer;
 
 use crate::gpsl::{permission::Permission, variable::Variable};
-use std::{io::Read, net::TcpStream};
+use std::{
+    io::Read,
+    net::TcpStream,
+    sync::{Arc, Mutex},
+};
 
 #[derive(PartialEq)]
 pub enum ExternalFuncStatus {
@@ -17,7 +21,7 @@ pub struct ExternalFuncReturn {
 }
 
 pub struct ExternalFuncCallData {
-    pub stream: Option<TcpStream>,
+    pub stream: Arc<Mutex<Option<TcpStream>>>,
 }
 
 #[allow(dead_code)]
@@ -68,11 +72,14 @@ pub const STD_FUNC: fn(
         }
         "receive" => {
             let mut buffer = String::default();
-            data.unwrap()
-                .stream
-                .unwrap()
-                .read_to_string(&mut buffer)
-                .unwrap();
+            let data = data.unwrap();
+            let mut stream = data.stream.lock().unwrap();
+
+            let stream = match &mut *stream {
+                Some(stream) => stream,
+                None => panic!("Cannot access to tcp stream"),
+            };
+            stream.read_to_string(&mut buffer).unwrap();
             ExternalFuncReturn {
                 status: ExternalFuncStatus::SUCCESS,
                 value: Some(serde_json::from_str(&buffer).unwrap()),
