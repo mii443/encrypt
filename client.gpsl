@@ -1,4 +1,9 @@
+
+#[server(ip = "localhost:8080")]
+fn add(a: num, b: num) {
+    return a + b;
+}
+
 fn main() {
-    send("test");
-    println(receive());
+    println(add(1, 2));
 }

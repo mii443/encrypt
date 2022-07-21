@@ -1,12 +1,12 @@
-use crate::gpsl::external_function::{
-    ExternalFuncCallData, ExternalFuncReturn, ExternalFuncStatus,
-};
+use crate::gpsl::external_function::{ExternalFuncReturn, ExternalFuncStatus};
 use crate::gpsl::node::*;
 use crate::gpsl::permission::Permission;
 use crate::gpsl::source::Source;
 use crate::gpsl::variable::*;
 use log::*;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
 use std::string::*;
 use std::sync::{Arc, Mutex};
@@ -19,21 +19,16 @@ pub struct Block {
     pub is_split: bool,
 }
 
+#[derive(Debug)]
 pub struct GPSL {
     pub functions: Option<HashMap<String, Box<Node>>>,
+    pub server_functions: Option<HashMap<String, HashMap<String, Box<Node>>>>,
+    pub servers: Option<HashMap<String, Arc<Mutex<TcpStream>>>>,
     pub global_variables: Vec<Variable>,
     pub source: Source,
     pub blocks: VecDeque<Block>,
-    pub tcp_stream: Arc<Mutex<Option<TcpStream>>>,
-    pub external_func: Vec<
-        fn(
-            String,
-            Vec<Variable>,
-            Vec<Permission>,
-            Vec<Permission>,
-            Option<ExternalFuncCallData>,
-        ) -> ExternalFuncReturn,
-    >,
+    pub external_func:
+        Vec<fn(String, Vec<Variable>, Vec<Permission>, Vec<Permission>) -> ExternalFuncReturn>,
 }
 
 #[derive(Clone, Debug)]
@@ -48,6 +43,12 @@ pub struct VariableStatus {
     pub initialized: bool,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ServerFunctionCall {
+    pub name: String,
+    pub args: HashMap<String, Variable>,
+}
+
 impl VariableStatus {
     pub fn default() -> VariableStatus {
         VariableStatus { initialized: false }
@@ -58,23 +59,19 @@ impl GPSL {
     pub fn new(
         source: Source,
         functions: Option<HashMap<String, Box<Node>>>,
-        tcp_sream: Arc<Mutex<Option<TcpStream>>>,
+        server_functions: Option<HashMap<String, HashMap<String, Box<Node>>>>,
+        servers: Option<HashMap<String, Arc<Mutex<TcpStream>>>>,
         external_func: Vec<
-            fn(
-                String,
-                Vec<Variable>,
-                Vec<Permission>,
-                Vec<Permission>,
-                Option<ExternalFuncCallData>,
-            ) -> ExternalFuncReturn,
+            fn(String, Vec<Variable>, Vec<Permission>, Vec<Permission>) -> ExternalFuncReturn,
         >,
     ) -> GPSL {
         GPSL {
             source,
             functions,
+            server_functions,
+            servers,
             global_variables: vec![],
             blocks: VecDeque::new(),
-            tcp_stream: tcp_sream,
             external_func,
         }
     }
@@ -125,6 +122,50 @@ impl GPSL {
                 for arg in args {
                     if let Some(val) = self.evaluate(arg).expect("Cannot evaluate") {
                         args_value.push(val);
+                    }
+                }
+
+                debug!(
+                    "Searching server function: {}, ({:?})",
+                    &function_name, args_value
+                );
+
+                for server in self.server_functions.clone().unwrap() {
+                    for function in server.1 {
+                        if function.0 == function_name {
+                            let mut servers = self.servers.clone().unwrap();
+                            let stream = servers.get_mut(&server.0).unwrap();
+                            let mut stream = stream.lock().unwrap();
+
+                            let function_args = function.1.extract_function_args();
+                            let mut args: HashMap<String, Variable> = HashMap::new();
+                            for (i, arg_name) in function_args.0.iter().enumerate() {
+                                args.insert(arg_name.clone(), args_value[i].clone());
+                            }
+
+                            let server_function_call = serde_json::to_string(&ServerFunctionCall {
+                                name: function_name.clone(),
+                                args: args.clone(),
+                            })
+                            .unwrap();
+                            println!("{}", server_function_call);
+
+                            stream
+                                .write_fmt(format_args!("{}\n", server_function_call))
+                                .unwrap();
+                            let mut buf = String::new();
+                            debug!("try clone");
+                            BufReader::new(stream.try_clone().unwrap())
+                                .read_line(&mut buf)
+                                .unwrap();
+                            let res: ExternalFuncReturn = serde_json::from_str(&buf).unwrap();
+                            if res.status == ExternalFuncStatus::SUCCESS {
+                                return Ok(res.value);
+                            }
+                            if res.status == ExternalFuncStatus::REJECTED {
+                                return Err("Server function rejected.".to_string());
+                            }
+                        }
                     }
                 }
 
@@ -185,9 +226,6 @@ impl GPSL {
                         args_value.clone(),
                         block.accept.clone(),
                         block.reject.clone(),
-                        Some(ExternalFuncCallData {
-                            stream: self.tcp_stream.clone(),
-                        }),
                     );
                     if res.status == ExternalFuncStatus::SUCCESS {
                         return Ok(res.value);
@@ -499,15 +537,33 @@ impl GPSL {
         }
     }
 
-    pub fn run(&mut self, function_name: String, _: Vec<Box<Node>>) -> Result<Variable, String> {
+    pub fn run(
+        &mut self,
+        function_name: String,
+        args: HashMap<String, Variable>,
+    ) -> Result<Variable, String> {
         debug!("functions: {:?}", self.functions);
         debug!("searching {}", function_name);
+
+        let mut local_variables = HashMap::new();
+        for (name, value) in args {
+            local_variables.insert(
+                name.clone(),
+                LocalVariable {
+                    name: name.clone(),
+                    value,
+                    status: VariableStatus::default(),
+                },
+            );
+        }
+
         self.blocks.push_front(Block {
             accept: vec![Permission::Administrator, Permission::StdIo],
             reject: vec![],
-            variables: HashMap::new(),
+            variables: local_variables,
             is_split: true,
         });
+
         if let Some(functions) = self.functions.clone() {
             if let Node::Function { body, .. } = &*(functions[&function_name]) {
                 for program in body {

@@ -1,4 +1,4 @@
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Source {
     pub src: Vec<char>,
     pub pos: usize,

@@ -3,7 +3,7 @@ options { tokenVocab = GpslLexer; }
 
 gpslFile: function* EOF ;
 
-function: FN IDENT LPAREN (IDENT COLON IDENT COMMA?)* RPAREN (ARROW IDENT)? block ;
+function: attribute? FN IDENT LPAREN (IDENT COLON IDENT COMMA?)* RPAREN (ARROW IDENT)? block ;
 
 program: stmt* ;
 
@@ -23,6 +23,8 @@ if: IF LPAREN expr RPAREN stmt (ELSE stmt)? ;
 while: WHILE LPAREN expr RPAREN stmt ;
 for: FOR LPAREN expr? SEMICOLON expr? SEMICOLON expr? RPAREN stmt ;
 
+
+attribute: SHARP LBRACKET IDENT (assign COMMA?)* RBRACKET ; 
 mode: SHARP IDENT ;
 permission: DOLLER LPAREN ( IDENT LBRACKET ( IDENT COMMA? )* RBRACKET COMMA? )* RPAREN ;
 

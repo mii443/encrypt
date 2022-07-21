@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-#[derive(Debug, PartialEq, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum NodeKind {
     ASSIGN,
     ADD,
@@ -13,12 +15,18 @@ pub enum NodeKind {
     LE, // <=
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Node {
     Function {
         name: String,
-        args: HashMap<String, String>,
+        args_name: Vec<String>,
+        args_type: Vec<String>,
         body: Vec<Box<Node>>,
+        attribute: Option<Box<Node>>,
+    },
+    Attribute {
+        name: String,
+        args: Vec<Box<Node>>,
     },
     Mode {
         mode: String,
@@ -86,5 +94,25 @@ impl Node {
 
     pub fn new_lvar_node(value: String) -> Box<Node> {
         Box::new(Node::Lvar { value })
+    }
+
+    pub fn extract_string(&self) -> String {
+        match self {
+            Node::Text { value } => value.clone(),
+            Node::Number { value } => value.to_string(),
+            Node::Lvar { value } => value.clone(),
+            _ => String::new(),
+        }
+    }
+
+    pub fn extract_function_args(&self) -> (Vec<String>, Vec<String>) {
+        match self {
+            Node::Function {
+                args_name,
+                args_type,
+                ..
+            } => (args_name.clone(), args_type.clone()),
+            _ => (Vec::new(), Vec::new()),
+        }
     }
 }

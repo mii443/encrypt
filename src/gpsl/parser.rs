@@ -1,7 +1,9 @@
 use crate::gpsl::node::*;
 use crate::gpsl::token::*;
 use crate::gpsl::tokenizer::*;
+use env_logger;
 use log::*;
+use log::{debug, error, info, warn};
 use std::collections::HashMap;
 
 #[derive(Clone)]
@@ -29,40 +31,57 @@ impl Parser {
         function: FN IDENT LPAREN (IDENT COLON IDENT COMMA?)* RPAREN (ARROW IDENT)? block ;
     */
     pub fn function(&mut self) -> Result<Box<Node>, String> {
+        // parse attribute
+        let attribute = if self.tokenizer.current_token().str == String::from("#") {
+            println!("{:?}", self.tokenizer.current_token());
+            Some(self.attribute()?)
+        } else {
+            Some(Box::new(Node::Attribute {
+                name: String::from(""),
+                args: vec![],
+            }))
+        };
+
+        println!("{:?}", self.tokenizer.current_token());
+
         if self
             .tokenizer
             .consume_kind_str(TokenKind::RESERVED, String::from("fn"))
         {
-            debug!("parsing function");
+            debug!("{}: parsing function", line!());
             let func_name = self.tokenizer.current_token().clone();
             self.tokenizer.expect_kind(TokenKind::IDENT)?;
-            let mut args = HashMap::new();
+            let mut args_name = vec![];
+            let mut args_type = vec![];
             self.tokenizer.expect(String::from("("))?;
-            debug!("parsing args");
+            debug!("{}: parsing args", line!());
             while !self
                 .tokenizer
                 .consume_kind_str(TokenKind::RESERVED, String::from(")"))
             {
-                debug!("consume argument");
+                debug!("{}: consume argument", line!());
                 let name = self.tokenizer.expect_ident()?;
                 self.tokenizer
                     .consume_kind_str(TokenKind::RESERVED, String::from(":"));
                 let type_str = self.tokenizer.expect_ident()?;
                 self.tokenizer
                     .consume_kind_str(TokenKind::RESERVED, String::from(","));
-                args.insert(name, type_str);
+                args_name.push(name);
+                args_type.push(type_str);
             }
 
             let mut nodes: Vec<Box<Node>> = vec![];
-            debug!("parsing body node");
+            debug!("{}: parsing body node", line!());
             loop {
                 nodes.push(self.stmt()?);
-                debug!("body nodes parsed");
+                debug!("{}: body nodes parsed", line!());
                 //self.tokenizer.expect(String::from("}"))?;
                 return Ok(Box::new(Node::Function {
                     name: func_name.str,
-                    args,
+                    args_name,
+                    args_type,
                     body: nodes,
+                    attribute,
                 }));
             }
         } else {
@@ -112,14 +131,14 @@ impl Parser {
             }));
         }
 
-        debug!("parsing permission");
+        debug!("{}: parsing permission", line!());
         let permission = if self.tokenizer.current_token().str == "$" {
             Some(self.permission()?)
         } else {
             None
         };
 
-        debug!("parsing mode");
+        debug!("{}: parsing mode", line!());
         let mode = if self.tokenizer.current_token().str == "#" {
             Some(self.mode()?)
         } else {
@@ -226,6 +245,33 @@ impl Parser {
         let node = self.expr();
         self.tokenizer.expect(String::from(";"))?;
         return node;
+    }
+
+    /*
+        attribute: SHARP LBRACKET IDENT LPAREN (assign COMMA?)* RPAREN RBRACKET ;
+    */
+    pub fn attribute(&mut self) -> Result<Box<Node>, String> {
+        self.tokenizer.expect(String::from("#"))?;
+        self.tokenizer.expect(String::from("["))?;
+        let name = self.tokenizer.current_token().clone();
+        self.tokenizer.expect_kind(TokenKind::IDENT)?;
+        self.tokenizer.expect(String::from("("))?;
+        let mut args: Vec<Box<Node>> = vec![];
+        loop {
+            if self.tokenizer.current_token().str == String::from(")") {
+                self.tokenizer
+                    .consume_kind_str(TokenKind::RESERVED, String::from(")"));
+                break;
+            }
+            args.push(self.assign()?);
+            self.tokenizer
+                .consume_kind_str(TokenKind::RESERVED, String::from(","));
+        }
+        self.tokenizer.expect(String::from("]"))?;
+        return Ok(Box::new(Node::Attribute {
+            name: name.str,
+            args,
+        }));
     }
 
     /*

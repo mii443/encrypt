@@ -1,7 +1,16 @@
 mod gpsl;
+use gpsl::external_function::ExternalFuncReturn;
+use gpsl::external_function::ExternalFuncStatus;
+use gpsl::node::Node;
+use gpsl::node::NodeKind;
 use gpsl::variable::Variable;
+use gpsl::vm::gpsl::ServerFunctionCall;
 use gpsl::{external_function::STD_FUNC, parser::*, source::*, tokenizer::*, vm::gpsl::*};
-use primitive_types::U512;
+use log::*;
+use std::env;
+use std::io::BufRead;
+use std::io::BufReader;
+use std::io::Write;
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::{collections::HashMap, fs};
@@ -55,10 +64,13 @@ struct Args {
     mode: String,
 
     #[clap(short, long, value_parser)]
-    file: String,
+    file: Option<String>,
 
     #[clap(short, long, value_parser)]
     ip: Option<String>,
+
+    #[clap(short, long, value_parser)]
+    port: Option<u16>,
 }
 
 fn listen_tcp_server(port: u16) -> TcpStream {
@@ -79,7 +91,66 @@ fn listen_tcp_server(port: u16) -> TcpStream {
 fn main() {
     let args = Args::parse();
 
-    let mut source = Source::new(fs::read_to_string(&(args.file)).expect("Cannot read file."));
+    match &*args.mode {
+        "server" => {
+            server(args);
+        }
+        "client" => {
+            client(args);
+        }
+        _ => {
+            println!("Unknown mode");
+        }
+    }
+}
+
+fn server(args: Args) {
+    let mut stream = listen_tcp_server(args.port.unwrap());
+
+    debug!("Receiving functions...");
+    let mut buf = String::default();
+    BufReader::new(stream.try_clone().unwrap())
+        .read_line(&mut buf)
+        .unwrap();
+
+    let functions: HashMap<String, Box<Node>> = serde_json::from_str(&buf).unwrap();
+    debug!("Received: {:?}", functions);
+
+    let mut gpsl = GPSL::new(
+        Source::new(String::default()),
+        Some(functions),
+        Some(HashMap::new()),
+        Some(HashMap::new()),
+        vec![STD_FUNC],
+    );
+
+    debug!("Receiving function call...");
+    BufReader::new(stream.try_clone().unwrap())
+        .read_line(&mut buf)
+        .unwrap();
+    debug!("Received");
+    debug!("{}", buf);
+
+    let function_call: ServerFunctionCall = serde_json::from_str(&buf).unwrap();
+
+    let result = gpsl.run(function_call.name, function_call.args);
+    let external_function_return = ExternalFuncReturn {
+        status: ExternalFuncStatus::SUCCESS,
+        value: Some(result.unwrap()),
+    };
+
+    debug!("Sending result...");
+    stream
+        .write_fmt(format_args!(
+            "{}\n",
+            serde_json::to_string(&external_function_return).unwrap()
+        ))
+        .unwrap();
+}
+
+fn client(args: Args) {
+    let mut source =
+        Source::new(fs::read_to_string(&(args.file.unwrap())).expect("Cannot read file."));
 
     let mut tokenizer = Tokenizer::new();
     tokenizer.tokenize(&mut source).unwrap();
@@ -89,19 +160,70 @@ fn main() {
         local_vars: HashMap::new(),
     };
 
-    let stream = match &*args.mode {
-        "server" => listen_tcp_server(8080),
-        "client" => TcpStream::connect(args.ip.unwrap()).unwrap(),
-        _ => panic!("Cannot start tcp stream."),
-    };
+    let functions = parser.functions().unwrap();
+    let mut server_functions: HashMap<String, HashMap<String, Box<Node>>> = HashMap::new();
+    for function in functions.clone() {
+        match *function.clone().1 {
+            Node::Function { attribute, .. } => match *(attribute.unwrap()) {
+                Node::Attribute { name, args } => {
+                    if name == String::from("server") {
+                        println!("{:?}", function);
+                        let ip = {
+                            let mut t_ip = None;
+                            for arg in args {
+                                let ip = match *arg {
+                                    Node::Operator { kind, lhs, rhs } => {
+                                        if kind == NodeKind::ASSIGN {
+                                            if lhs.extract_string() == String::from("ip") {
+                                                println!("IP: {}", rhs.extract_string());
+                                                Some(rhs.extract_string())
+                                            } else {
+                                                None
+                                            }
+                                        } else {
+                                            None
+                                        }
+                                    }
+                                    _ => None,
+                                };
+                                if ip.is_some() {
+                                    t_ip = ip;
+                                    break;
+                                }
+                            }
+                            t_ip.unwrap()
+                        };
+
+                        let t_functions = server_functions.entry(ip).or_insert(HashMap::new());
+                        t_functions.insert(function.clone().0.clone(), function.clone().1.clone());
+                    }
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+    }
+
+    let mut servers: HashMap<String, Arc<Mutex<TcpStream>>> = HashMap::new();
+    for (ip, functions) in server_functions.clone() {
+        let mut stream = TcpStream::connect(ip.clone()).unwrap();
+        stream
+            .write_fmt(format_args!(
+                "{}\n",
+                serde_json::to_string(&functions).unwrap()
+            ))
+            .unwrap();
+        servers.insert(ip, Arc::new(Mutex::new(stream)));
+    }
 
     let mut gpsl = GPSL::new(
         source,
-        Some(parser.functions().unwrap()),
-        Arc::new(Mutex::new(Some(stream))),
+        Some(functions),
+        Some(server_functions),
+        Some(servers),
         vec![STD_FUNC],
     );
-    let res = gpsl.run("main".to_string(), vec![]);
+    let res = gpsl.run("main".to_string(), HashMap::new());
     if let Err(err) = res {
         println!("Error: {:?}", err);
     }

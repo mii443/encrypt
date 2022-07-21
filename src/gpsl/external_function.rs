@@ -1,4 +1,4 @@
-use serde::Deserializer;
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::gpsl::{permission::Permission, variable::Variable};
 use std::{
@@ -7,7 +7,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub enum ExternalFuncStatus {
     SUCCESS,
     NOTFOUND,
@@ -15,13 +15,10 @@ pub enum ExternalFuncStatus {
     REJECTED,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ExternalFuncReturn {
     pub status: ExternalFuncStatus,
     pub value: Option<Variable>,
-}
-
-pub struct ExternalFuncCallData {
-    pub stream: Arc<Mutex<Option<TcpStream>>>,
 }
 
 #[allow(dead_code)]
@@ -30,8 +27,7 @@ pub const STD_FUNC: fn(
     Vec<Variable>,
     Vec<Permission>,
     Vec<Permission>,
-    Option<ExternalFuncCallData>,
-) -> ExternalFuncReturn = |name, args, accept, reject, data| {
+) -> ExternalFuncReturn = |name, args, accept, reject| {
     let name = name.as_str();
     match name {
         "println" => {
@@ -69,42 +65,42 @@ pub const STD_FUNC: fn(
                     value: None,
                 }
             }
-        }
+        } /*
         "receive" => {
-            println!("Waiting for client...");
-            let mut buffer = String::default();
-            let data = data.unwrap();
-            let mut stream = data.stream.lock().unwrap();
+        println!("Waiting for client...");
+        let mut buffer = String::default();
+        let data = data.unwrap();
+        let mut stream = data.stream.lock().unwrap();
 
-            let stream = match &mut *stream {
-                Some(stream) => stream,
-                None => panic!("Cannot access to tcp stream"),
-            };
-            let mut reader = BufReader::new(stream);
-            reader.read_line(&mut buffer).unwrap();
-            ExternalFuncReturn {
-                status: ExternalFuncStatus::SUCCESS,
-                value: Some(serde_json::from_str(&buffer).unwrap()),
-            }
+        let stream = match &mut *stream {
+        Some(stream) => stream,
+        None => panic!("Cannot access to tcp stream"),
+        };
+        let mut reader = BufReader::new(stream);
+        reader.read_line(&mut buffer).unwrap();
+        ExternalFuncReturn {
+        status: ExternalFuncStatus::SUCCESS,
+        value: Some(serde_json::from_str(&buffer).unwrap()),
+        }
         }
         "send" => {
-            let data = data.unwrap();
-            let mut stream = data.stream.lock().unwrap();
+        let data = data.unwrap();
+        let mut stream = data.stream.lock().unwrap();
 
-            let stream = match &mut *stream {
-                Some(stream) => stream,
-                None => panic!("Cannot access to tcp stream"),
-            };
+        let stream = match &mut *stream {
+        Some(stream) => stream,
+        None => panic!("Cannot access to tcp stream"),
+        };
 
-            let value = serde_json::to_string(&args[0]).unwrap();
+        let value = serde_json::to_string(&args[0]).unwrap();
 
-            stream.write_fmt(format_args!("{}\n", value)).unwrap();
+        stream.write_fmt(format_args!("{}\n", value)).unwrap();
 
-            ExternalFuncReturn {
-                status: ExternalFuncStatus::SUCCESS,
-                value: None,
-            }
+        ExternalFuncReturn {
+        status: ExternalFuncStatus::SUCCESS,
+        value: None,
         }
+        }*/
         _ => ExternalFuncReturn {
             status: ExternalFuncStatus::NOTFOUND,
             value: None,
