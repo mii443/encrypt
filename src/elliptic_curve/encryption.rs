@@ -1,4 +1,5 @@
 use std::{
+    fmt::Display,
     ops::{Add, Sub},
     sync::mpsc,
     thread,
@@ -15,7 +16,7 @@ use rand_chacha::{
 
 use super::elliptic_curve::{EllipticCurve, EllipticCurvePoint};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Encryption {
     pub ellictic_curve: EllipticCurve,
     pub base_point: EllipticCurvePoint,
@@ -27,6 +28,24 @@ pub struct Encryption {
 pub struct EncryptedEllipticCurvePoint {
     pub data: EllipticCurvePoint,
     pub rp: EllipticCurvePoint,
+}
+
+impl EncryptedEllipticCurvePoint {
+    pub fn default() -> Self {
+        Self {
+            data: EllipticCurvePoint::Infinity,
+            rp: EllipticCurvePoint::Infinity,
+        }
+    }
+}
+
+impl Display for EncryptedEllipticCurvePoint {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.data {
+            EllipticCurvePoint::Infinity => write!(f, "Infinity"),
+            EllipticCurvePoint::Point { x, y, .. } => write!(f, "{:x}{:x}", x.value, y.value),
+        }
+    }
 }
 
 impl Add for EncryptedEllipticCurvePoint {

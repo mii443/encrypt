@@ -1,11 +1,14 @@
-use crate::elliptic_curve::encryption::EncryptedEllipticCurvePoint;
-use crate::elliptic_curve::encryption::EncryptedEllipticCurvePoint;
-use crate::gpsl::external_function::{ExternalFuncReturn, ExternalFuncStatus};
+use crate::elliptic_curve::elliptic_curve::EllipticCurvePoint;
+use crate::elliptic_curve::encryption::{EncryptedEllipticCurvePoint, Encryption};
+use crate::gpsl::external_function::{
+    ExternalFuncReturn, ExternalFuncStatus, ExternalFunctionCallData,
+};
 use crate::gpsl::node::*;
 use crate::gpsl::permission::Permission;
 use crate::gpsl::source::Source;
 use crate::gpsl::variable::*;
 use log::*;
+use primitive_types::U512;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::io::{BufRead, BufReader, Write};
@@ -26,11 +29,21 @@ pub struct GPSL {
     pub functions: Option<HashMap<String, Box<Node>>>,
     pub server_functions: Option<HashMap<String, HashMap<String, Box<Node>>>>,
     pub servers: Option<HashMap<String, Arc<Mutex<TcpStream>>>>,
+    pub encryption: Encryption,
+    pub private_key: Option<U512>,
+    pub public_key: Option<EllipticCurvePoint>,
     pub global_variables: Vec<Variable>,
     pub source: Source,
     pub blocks: VecDeque<Block>,
-    pub external_func:
-        Vec<fn(String, Vec<Variable>, Vec<Permission>, Vec<Permission>) -> ExternalFuncReturn>,
+    pub external_func: Vec<
+        fn(
+            String,
+            Vec<Variable>,
+            Vec<Permission>,
+            Vec<Permission>,
+            ExternalFunctionCallData,
+        ) -> ExternalFuncReturn,
+    >,
 }
 
 #[derive(Clone, Debug)]
@@ -63,8 +76,17 @@ impl GPSL {
         functions: Option<HashMap<String, Box<Node>>>,
         server_functions: Option<HashMap<String, HashMap<String, Box<Node>>>>,
         servers: Option<HashMap<String, Arc<Mutex<TcpStream>>>>,
+        encryption: Encryption,
+        private_key: Option<U512>,
+        public_key: Option<EllipticCurvePoint>,
         external_func: Vec<
-            fn(String, Vec<Variable>, Vec<Permission>, Vec<Permission>) -> ExternalFuncReturn,
+            fn(
+                String,
+                Vec<Variable>,
+                Vec<Permission>,
+                Vec<Permission>,
+                ExternalFunctionCallData,
+            ) -> ExternalFuncReturn,
         >,
     ) -> GPSL {
         GPSL {
@@ -72,6 +94,9 @@ impl GPSL {
             functions,
             server_functions,
             servers,
+            encryption,
+            private_key,
+            public_key,
             global_variables: vec![],
             blocks: VecDeque::new(),
             external_func,
@@ -234,6 +259,11 @@ impl GPSL {
                         args_value.clone(),
                         block.accept.clone(),
                         block.reject.clone(),
+                        ExternalFunctionCallData {
+                            encryption: self.encryption.clone(),
+                            private_key: self.private_key,
+                            public_key: self.public_key,
+                        },
                     );
                     if res.status == ExternalFuncStatus::SUCCESS {
                         return Ok(res.value);
@@ -268,15 +298,15 @@ impl GPSL {
                 let lhs = self.evaluate(lhs).expect("Cannot evaluate lhs.");
                 let rhs = self.evaluate(rhs).expect("Cannot evaluate rhs.");
 
-                if let Some(lhs) = lhs {
+                if let Some(lhs) = lhs.clone() {
                     if let Some(rhs) = rhs {
                         match kind {
-                            NodeKind::ADD => match GPSL::extract_number(lhs) {
+                            NodeKind::ADD => match GPSL::extract_number(lhs.clone()) {
                                 Ok(lhs) => match GPSL::extract_number(rhs) {
                                     Ok(rhs) => Ok(Some(Variable::Number { value: lhs + rhs })),
                                     Err(err) => Err(err),
                                 },
-                                Err(err) => match GPSL::extract_eep(lhs) {
+                                Err(_) => match GPSL::extract_eep(lhs) {
                                     Ok(lhs) => match GPSL::extract_eep(rhs) {
                                         Ok(rhs) => {
                                             Ok(Some(Variable::PureEncrypted { value: lhs + rhs }))
@@ -531,6 +561,10 @@ impl GPSL {
                 } else if var_type == "String" {
                     Variable::Text {
                         value: String::default(),
+                    }
+                } else if var_type == "eep" {
+                    Variable::PureEncrypted {
+                        value: EncryptedEllipticCurvePoint::default(),
                     }
                 } else {
                     return Err(format!("{}: 未知の型です。", var_type));

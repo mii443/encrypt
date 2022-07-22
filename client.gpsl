@@ -1,20 +1,24 @@
 
-#[server(ip = "172.25.5.104:8080")]
-fn add(a: num, b: num) {
+
+#[server(ip = "localhost:8080")]
+fn encrypt_add(a: eep, b: eep) {
+    print("a: ");
+    println(a);
+    print("b: ");
+    println(b);
     return a + b;
 }
 
-#[server(ip = "172.25.5.189:8080")]
-fn mul(a: num, b: num) {
-    return a * b;
-}
 
 fn main() {
-    println(add(1, 2));
-    println(mul(2, 2));
-    let i: num;
-    for (i = 0; i < 2000; i += 1) {
-        println(mul(i, i));
-    }
-}
+    let enc_a: eep;
+    let enc_b: eep;
 
+    enc_a = encrypt(10);
+    enc_b = encrypt(4);
+
+    let enc_res: eep;
+    enc_res = encrypt_add(enc_a, enc_b);
+
+    println(decrypt(enc_res)); 
+}

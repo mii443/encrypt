@@ -1,6 +1,9 @@
 mod common;
 mod elliptic_curve;
 mod gpsl;
+use common::finite_field::FiniteFieldElement;
+use elliptic_curve::elliptic_curve::EllipticCurve;
+use elliptic_curve::encryption::Encryption;
 use gpsl::external_function::ExternalFuncReturn;
 use gpsl::external_function::ExternalFuncStatus;
 use gpsl::node::Node;
@@ -8,6 +11,7 @@ use gpsl::node::NodeKind;
 use gpsl::vm::gpsl::ServerFunctionCall;
 use gpsl::{external_function::STD_FUNC, source::*, tokenizer::*, vm::gpsl::*};
 use log::*;
+use primitive_types::U512;
 use std::env;
 use std::io::BufRead;
 use std::io::BufReader;
@@ -89,6 +93,52 @@ fn listen_tcp_server(port: u16) -> TcpStream {
     panic!("Cannot connect to client");
 }
 
+fn generate_encryption() -> Encryption {
+    let p = U512::from_str_radix(
+        "115792089237316195423570985008687907853269984665640564039457584007908834671663",
+        10,
+    )
+    .unwrap();
+
+    let secp256_k1_a = FiniteFieldElement::new(U512::from(0u8), p);
+    let secp256_k1_b = FiniteFieldElement::new(U512::from(7u8), p);
+    let secp256_k1_base_x = FiniteFieldElement::new(
+        U512::from_str_radix(
+            "55066263022277343669578718895168534326250603453777594175500187360389116729240",
+            10,
+        )
+        .unwrap(),
+        p,
+    );
+    let secp256_k1_base_y = FiniteFieldElement::new(
+        U512::from_str_radix(
+            "32670510020758816978083085130507043184471273380659243275938904335757337482424",
+            10,
+        )
+        .unwrap(),
+        p,
+    );
+    let secp256_k1_order = FiniteFieldElement::new(
+        U512::from_str_radix(
+            "115792089237316195423570985008687907852837564279074904382605163141518161494337",
+            10,
+        )
+        .unwrap(),
+        p,
+    );
+    let ec = EllipticCurve {
+        a: secp256_k1_a,
+        b: secp256_k1_b,
+    };
+
+    Encryption {
+        ellictic_curve: ec,
+        base_point: ec.point(secp256_k1_base_x, secp256_k1_base_y),
+        order: secp256_k1_order,
+        plain_mapping: vec![],
+    }
+}
+
 fn main() {
     env::set_var("RUST_LOG", "info");
     env_logger::init();
@@ -126,6 +176,9 @@ fn server(args: Args) {
             Some(functions),
             Some(HashMap::new()),
             Some(HashMap::new()),
+            generate_encryption(),
+            None,
+            None,
             vec![STD_FUNC],
         );
 
@@ -240,11 +293,17 @@ fn client(args: Args) {
         servers.insert(ip, Arc::new(Mutex::new(stream)));
     }
 
+    let encryption = generate_encryption();
+    let private_key = Encryption::get_private_key();
+
     let mut gpsl = GPSL::new(
         source,
         Some(functions),
         Some(server_functions),
         Some(servers),
+        encryption.clone(),
+        Some(private_key),
+        Some(encryption.get_public_key(private_key)),
         vec![STD_FUNC],
     );
     let res = gpsl.run("main".to_string(), HashMap::new());

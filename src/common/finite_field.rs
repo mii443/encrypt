@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use super::math::{mod_inv, plus_mod};
 
-#[derive(PartialEq, PartialOrd, Debug, Copy, Clone, Deserialize, Serialize)]
+#[derive(PartialEq, Debug, Copy, Clone, PartialOrd, Deserialize, Serialize)]
 pub struct FiniteFieldElement {
     pub value: U512,
     pub p: U512,
