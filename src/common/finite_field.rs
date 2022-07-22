@@ -1,14 +1,18 @@
-use std::{ops::{Add, Sub, Mul, AddAssign, SubAssign, Div, Neg}, fmt::{Debug, Display}};
+use std::{
+    fmt::{Debug, Display},
+    ops::{Add, AddAssign, Div, Mul, Neg, Sub, SubAssign},
+};
 
 use bigdecimal::{num_bigint::BigInt, Num};
 use primitive_types::U512;
+use serde::{Deserialize, Serialize};
 
 use super::math::{mod_inv, plus_mod};
 
-#[derive(PartialEq, Debug, Copy, Clone)]
+#[derive(PartialEq, PartialOrd, Debug, Copy, Clone, Deserialize, Serialize)]
 pub struct FiniteFieldElement {
     pub value: U512,
-    pub p: U512
+    pub p: U512,
 }
 
 impl FiniteFieldElement {
@@ -19,7 +23,10 @@ impl FiniteFieldElement {
     pub fn inverse(&self) -> Self {
         let left = BigInt::from_str_radix(&format!("{}", self.value), 10).unwrap();
         let right = BigInt::from_str_radix(&format!("{}", self.p), 10).unwrap();
-        Self::new(U512::from_str_radix(&format!("{}", mod_inv(left, right)), 10).unwrap(), self.p)
+        Self::new(
+            U512::from_str_radix(&format!("{}", mod_inv(left, right)), 10).unwrap(),
+            self.p,
+        )
     }
 }
 
@@ -79,7 +86,7 @@ impl Sub for FiniteFieldElement {
             panic!("Cannot sub different field value.");
         }
         if self.value < rhs.value {
-            Self::new(self.p - rhs.value + self.value , self.p)
+            Self::new(self.p - rhs.value + self.value, self.p)
         } else {
             Self::new(self.value - rhs.value, self.p)
         }
@@ -131,7 +138,10 @@ impl Neg for FiniteFieldElement {
         let value = -BigInt::from_str_radix(&format!("{}", self.value), 10).unwrap();
         let p = BigInt::from_str_radix(&format!("{}", self.p), 10).unwrap();
         let plus_mod = plus_mod(value, p);
-        FiniteFieldElement::new(U512::from_str_radix(&format!("{}", plus_mod), 10).unwrap(), self.p)
+        FiniteFieldElement::new(
+            U512::from_str_radix(&format!("{}", plus_mod), 10).unwrap(),
+            self.p,
+        )
     }
 }
 

@@ -1,3 +1,5 @@
+use crate::elliptic_curve::encryption::EncryptedEllipticCurvePoint;
+use crate::elliptic_curve::encryption::EncryptedEllipticCurvePoint;
 use crate::gpsl::external_function::{ExternalFuncReturn, ExternalFuncStatus};
 use crate::gpsl::node::*;
 use crate::gpsl::permission::Permission;
@@ -110,6 +112,13 @@ impl GPSL {
         match node {
             Variable::Number { value } => Ok(value),
             _ => Err(String::from("Not a number")),
+        }
+    }
+
+    pub fn extract_eep(node: Variable) -> Result<EncryptedEllipticCurvePoint, String> {
+        match node {
+            Variable::PureEncrypted { value } => Ok(value),
+            _ => Err(String::from("Not an encrypted point")),
         }
     }
 
@@ -267,7 +276,15 @@ impl GPSL {
                                     Ok(rhs) => Ok(Some(Variable::Number { value: lhs + rhs })),
                                     Err(err) => Err(err),
                                 },
-                                Err(err) => Err(err),
+                                Err(err) => match GPSL::extract_eep(lhs) {
+                                    Ok(lhs) => match GPSL::extract_eep(rhs) {
+                                        Ok(rhs) => {
+                                            Ok(Some(Variable::PureEncrypted { value: lhs + rhs }))
+                                        }
+                                        Err(err) => Err(err),
+                                    },
+                                    Err(err) => Err(err),
+                                },
                             },
                             NodeKind::DIV => match GPSL::extract_number(lhs) {
                                 Ok(lhs) => match GPSL::extract_number(rhs) {

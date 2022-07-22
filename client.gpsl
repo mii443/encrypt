@@ -1,10 +1,10 @@
 
-#[server(ip = "localhost:8080")]
+#[server(ip = "172.25.5.104:8080")]
 fn add(a: num, b: num) {
     return a + b;
 }
 
-#[server(ip = "localhost:8080")]
+#[server(ip = "172.25.5.189:8080")]
 fn mul(a: num, b: num) {
     return a * b;
 }

@@ -1,9 +1,17 @@
-use std::{ops::{Add, Sub}, sync::mpsc, thread};
+use std::{
+    ops::{Add, Sub},
+    sync::mpsc,
+    thread,
+};
 
-use primitive_types::{U512, U256};
+use primitive_types::{U256, U512};
+use serde::{Deserialize, Serialize};
 
 use crate::common::finite_field::FiniteFieldElement;
-use rand_chacha::{ChaCha20Rng, rand_core::{SeedableRng, RngCore}};
+use rand_chacha::{
+    rand_core::{RngCore, SeedableRng},
+    ChaCha20Rng,
+};
 
 use super::elliptic_curve::{EllipticCurve, EllipticCurvePoint};
 
@@ -12,13 +20,13 @@ pub struct Encryption {
     pub ellictic_curve: EllipticCurve,
     pub base_point: EllipticCurvePoint,
     pub order: FiniteFieldElement,
-    pub plain_mapping: Vec<EllipticCurvePoint>
+    pub plain_mapping: Vec<EllipticCurvePoint>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(PartialEq, PartialOrd, Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct EncryptedEllipticCurvePoint {
     pub data: EllipticCurvePoint,
-    pub rp: EllipticCurvePoint
+    pub rp: EllipticCurvePoint,
 }
 
 impl Add for EncryptedEllipticCurvePoint {
@@ -27,7 +35,7 @@ impl Add for EncryptedEllipticCurvePoint {
     fn add(self, rhs: Self) -> Self::Output {
         Self {
             data: self.data + rhs.data,
-            rp: self.rp + rhs.rp
+            rp: self.rp + rhs.rp,
         }
     }
 }
@@ -37,8 +45,8 @@ impl Sub for EncryptedEllipticCurvePoint {
 
     fn sub(self, rhs: Self) -> Self::Output {
         Self {
-            data: self.data  + (-rhs.data),
-            rp: self.rp + (-rhs.rp)
+            data: self.data + (-rhs.data),
+            rp: self.rp + (-rhs.rp),
         }
     }
 }
@@ -46,9 +54,7 @@ impl Sub for EncryptedEllipticCurvePoint {
 impl Encryption {
     pub fn ec_point_to_plain(&self, point: EllipticCurvePoint) -> U512 {
         match point {
-            EllipticCurvePoint::Infinity => {
-                return U512::from(0u8)
-            }
+            EllipticCurvePoint::Infinity => return U512::from(0u8),
             _ => {}
         }
 
@@ -56,15 +62,23 @@ impl Encryption {
 
         for p in &self.plain_mapping {
             match p {
-                EllipticCurvePoint::Point { x: px, y: py, a: _, b: _ } => {
-                    match point {
-                        EllipticCurvePoint::Point { x: ppx, y, a: _, b: _ } => {
-                            if *px == ppx && *py == y {
-                                return U512::from(x) + U512::from(1u8);
-                            }
-                        },
-                        _ => {}
+                EllipticCurvePoint::Point {
+                    x: px,
+                    y: py,
+                    a: _,
+                    b: _,
+                } => match point {
+                    EllipticCurvePoint::Point {
+                        x: ppx,
+                        y,
+                        a: _,
+                        b: _,
+                    } => {
+                        if *px == ppx && *py == y {
+                            return U512::from(x) + U512::from(1u8);
+                        }
                     }
+                    _ => {}
                 },
                 _ => {}
             }
@@ -80,16 +94,28 @@ impl Encryption {
             self.plain_mapping[x as usize]
         };
 
-        while x < i64::MAX && !(match tmp {
-            EllipticCurvePoint::Point { x: tx, y: ty, a: _, b: _ } => match point {
-                EllipticCurvePoint::Point { x: px, y: py, a: _, b: _ } => tx == px && ty == py,
-                _ => false
-            },
-            EllipticCurvePoint::Infinity => match point {
-                EllipticCurvePoint::Infinity => true,
-                _ => false
-            },
-        }) {
+        while x < i64::MAX
+            && !(match tmp {
+                EllipticCurvePoint::Point {
+                    x: tx,
+                    y: ty,
+                    a: _,
+                    b: _,
+                } => match point {
+                    EllipticCurvePoint::Point {
+                        x: px,
+                        y: py,
+                        a: _,
+                        b: _,
+                    } => tx == px && ty == py,
+                    _ => false,
+                },
+                EllipticCurvePoint::Infinity => match point {
+                    EllipticCurvePoint::Infinity => true,
+                    _ => false,
+                },
+            })
+        {
             x += 1;
             tmp = tmp + self.base_point;
         }
@@ -99,7 +125,7 @@ impl Encryption {
 
     pub fn plain_to_ec_point(&self, m: U512) -> EllipticCurvePoint {
         if m == U512::from(0u8) {
-            return EllipticCurvePoint::Infinity
+            return EllipticCurvePoint::Infinity;
         }
 
         return self.base_point * m;
@@ -110,12 +136,13 @@ impl Encryption {
         ecc_p.data + (-rq)
     }
 
-    pub fn encrypt(&self, message: EllipticCurvePoint, public_key: EllipticCurvePoint, r: Option<U512>) -> EncryptedEllipticCurvePoint {
-        let ra = if let Some(ra) = r {
-            ra
-        } else {
-            Self::random()
-        };
+    pub fn encrypt(
+        &self,
+        message: EllipticCurvePoint,
+        public_key: EllipticCurvePoint,
+        r: Option<U512>,
+    ) -> EncryptedEllipticCurvePoint {
+        let ra = if let Some(ra) = r { ra } else { Self::random() };
 
         let (data_tx, data_rx) = mpsc::channel();
         let (rp_tx, rp_rx) = mpsc::channel();
@@ -134,7 +161,10 @@ impl Encryption {
         let data_received = data_rx.recv().unwrap();
         let rp_received = rp_rx.recv().unwrap();
 
-        EncryptedEllipticCurvePoint { data: data_received, rp: rp_received }
+        EncryptedEllipticCurvePoint {
+            data: data_received,
+            rp: rp_received,
+        }
     }
 
     pub fn get_public_key(&self, private_key: U512) -> EllipticCurvePoint {

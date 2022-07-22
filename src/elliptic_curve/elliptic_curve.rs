@@ -4,10 +4,11 @@ use std::{
 };
 
 use primitive_types::U512;
+use serde::{Deserialize, Serialize};
 
 use crate::common::finite_field::FiniteFieldElement;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct EllipticCurve {
     pub a: FiniteFieldElement,
     pub b: FiniteFieldElement,
@@ -24,7 +25,7 @@ impl EllipticCurve {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub enum EllipticCurvePoint {
     Point {
         x: FiniteFieldElement,

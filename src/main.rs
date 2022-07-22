@@ -1,3 +1,5 @@
+mod common;
+mod elliptic_curve;
 mod gpsl;
 use gpsl::external_function::ExternalFuncReturn;
 use gpsl::external_function::ExternalFuncStatus;

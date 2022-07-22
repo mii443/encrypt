@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 bigdecimal = "0.3.0"
-primitive-types = "0.11.1"
+primitive-types = { version = "0.11.1", features = ["serde"] }
 rand = {version = "0.7.3"}
 rand_chacha = "*"
 clap = { version = "3.2.8", features = ["derive"] }
