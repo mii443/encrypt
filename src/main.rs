@@ -79,7 +79,7 @@ struct Args {
 }
 
 fn listen_tcp_server(port: u16) -> TcpStream {
-    let listener = TcpListener::bind(format!("localhost:{}", port)).unwrap();
+    let listener = TcpListener::bind(format!("0.0.0.0:{}", port)).unwrap();
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
