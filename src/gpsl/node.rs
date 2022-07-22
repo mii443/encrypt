@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
@@ -41,7 +39,7 @@ pub enum Node {
         rhs: Box<Node>,
     },
     Number {
-        value: usize,
+        value: i64,
     },
     Text {
         value: String,
@@ -88,7 +86,7 @@ impl Node {
         Box::new(Node::Operator { kind, lhs, rhs })
     }
 
-    pub fn new_num_node(value: usize) -> Box<Node> {
+    pub fn new_num_node(value: i64) -> Box<Node> {
         Box::new(Node::Number { value })
     }
 

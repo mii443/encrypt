@@ -1,4 +1,7 @@
-use std::{ops::{Add, Mul, Neg}, fmt::Display};
+use std::{
+    fmt::Display,
+    ops::{Add, Mul, Neg},
+};
 
 use primitive_types::U512;
 
@@ -7,12 +10,17 @@ use crate::common::finite_field::FiniteFieldElement;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EllipticCurve {
     pub a: FiniteFieldElement,
-    pub b: FiniteFieldElement
+    pub b: FiniteFieldElement,
 }
 
 impl EllipticCurve {
     pub fn point(self, x: FiniteFieldElement, y: FiniteFieldElement) -> EllipticCurvePoint {
-        EllipticCurvePoint::Point { x, y, a: self.a, b: self.b }
+        EllipticCurvePoint::Point {
+            x,
+            y,
+            a: self.a,
+            b: self.b,
+        }
     }
 }
 
@@ -22,13 +30,12 @@ pub enum EllipticCurvePoint {
         x: FiniteFieldElement,
         y: FiniteFieldElement,
         a: FiniteFieldElement,
-        b: FiniteFieldElement
+        b: FiniteFieldElement,
     },
-    Infinity
+    Infinity,
 }
 
 impl EllipticCurvePoint {
-
     pub fn exp(&self, k: U512) -> Self {
         if k == U512::zero() {
             return Self::Infinity;
@@ -56,35 +63,47 @@ impl EllipticCurvePoint {
         }
     }
 
-    pub fn extract(&self) -> (FiniteFieldElement, FiniteFieldElement, FiniteFieldElement, FiniteFieldElement) {
+    pub fn extract(
+        &self,
+    ) -> (
+        FiniteFieldElement,
+        FiniteFieldElement,
+        FiniteFieldElement,
+        FiniteFieldElement,
+    ) {
         match self {
-            EllipticCurvePoint::Point { x, y, a, b } => (*x,*y,*a,*b),
-            _ => panic!("inifinity")
+            EllipticCurvePoint::Point { x, y, a, b } => (*x, *y, *a, *b),
+            _ => panic!("inifinity"),
         }
     }
 
     pub fn lambda(p: EllipticCurvePoint, q: EllipticCurvePoint) -> FiniteFieldElement {
         let (x1, y1) = match p {
-            EllipticCurvePoint::Point { x, y, .. } => (x,y),
-            _ => panic!("P is inifinity.")
+            EllipticCurvePoint::Point { x, y, .. } => (x, y),
+            _ => panic!("P is inifinity."),
         };
 
         let (x2, y2) = match q {
-            EllipticCurvePoint::Point { x, y, .. } => (x,y),
-            _ => panic!("Q is inifinity.")
+            EllipticCurvePoint::Point { x, y, .. } => (x, y),
+            _ => panic!("Q is inifinity."),
         };
 
         (y2 - y1) / (x2 - x1)
     }
 
-    pub fn l(g: EllipticCurvePoint, h: EllipticCurvePoint, var: EllipticCurvePoint) -> FiniteFieldElement {
+    pub fn l(
+        g: EllipticCurvePoint,
+        h: EllipticCurvePoint,
+        var: EllipticCurvePoint,
+    ) -> FiniteFieldElement {
         //println!("L g: {}, h: {}, var: {}", g, h, var);
         let (gx, gy, a, _) = g.extract();
         let (hx, hy, _, _) = h.extract();
         let (varx, vary, _, _) = var.extract();
 
         let v = if g == h {
-            (FiniteFieldElement::new(U512::from(3u8), gx.p) * gx * gx + a) * (FiniteFieldElement::new(U512::from(2u8), gx.p) * gy).inverse()
+            (FiniteFieldElement::new(U512::from(3u8), gx.p) * gx * gx + a)
+                * (FiniteFieldElement::new(U512::from(2u8), gx.p) * gy).inverse()
         } else {
             (hy - gy) * (hx - gx).inverse()
         };
@@ -100,10 +119,14 @@ impl EllipticCurvePoint {
         vx - rx
     }
 
-    pub fn g(p: EllipticCurvePoint, q: EllipticCurvePoint, v: EllipticCurvePoint) -> FiniteFieldElement {
+    pub fn g(
+        p: EllipticCurvePoint,
+        q: EllipticCurvePoint,
+        v: EllipticCurvePoint,
+    ) -> FiniteFieldElement {
         let (px, py, _, _) = p.extract();
         let (qx, qy, _, _) = q.extract();
-        let (vx, vy, _, _) = v.extract();
+        let (vx, _, _, _) = v.extract();
         if px == qx && py == -qy {
             vx - px
         } else if p == q {
@@ -123,18 +146,18 @@ impl EllipticCurvePoint {
         let mut f = FiniteFieldElement::new(U512::from(1u8), prime);
         let mut t = p.clone();
 
-        let mut s = m.bits();
+        let s = m.bits();
         let mut i = 1usize;
         //println!("1 to {}", s);
         while i < s {
             //println!("ARR: {}", m.bit(i));
             //println!("I: {}", i);
-            let gf = Self::g(t,t,q);
+            let gf = Self::g(t, t, q);
             f = f * f * gf;
             //println!("Miller g: {}", gf);
             t = t + t;
             if m.bit(i) {
-                f = f * Self::g(t, p,q);
+                f = f * Self::g(t, p, q);
                 t = t + p;
             }
             i += 1;
@@ -169,13 +192,10 @@ impl Display for EllipticCurvePoint {
 impl EllipticCurvePoint {
     pub fn check(self) -> bool {
         match self {
-            EllipticCurvePoint::Point { x, y, a, b } => {
-                y * y == x * x * x + a * x + b
-            },
+            EllipticCurvePoint::Point { x, y, a, b } => y * y == x * x * x + a * x + b,
             EllipticCurvePoint::Infinity => true,
         }
     }
-
 }
 
 impl Neg for EllipticCurvePoint {
@@ -185,7 +205,7 @@ impl Neg for EllipticCurvePoint {
         if let EllipticCurvePoint::Point { x, y, a, b } = self {
             EllipticCurvePoint::Point { x, y: -y, a, b }
         } else {
-            return self
+            return self;
         }
     }
 }
@@ -195,35 +215,38 @@ impl Add for EllipticCurvePoint {
 
     fn add(self, rhs: Self) -> Self::Output {
         match self.clone() {
-            EllipticCurvePoint::Point { x: x1, y: y1, a, b } => {
-                match rhs {
-                    EllipticCurvePoint::Point { x: x2, y: y2, a: a2, b: b2 } => {
-                        let p = x1.p;
-                        if a != a2 || b != b2 {
-                            panic!("Cannot add different curve point.");
-                        }
+            EllipticCurvePoint::Point { x: x1, y: y1, a, b } => match rhs {
+                EllipticCurvePoint::Point {
+                    x: x2,
+                    y: y2,
+                    a: a2,
+                    b: b2,
+                } => {
+                    let p = x1.p;
+                    if a != a2 || b != b2 {
+                        panic!("Cannot add different curve point.");
+                    }
 
-                        if x1 == x2 && y2 == y1 - y1 - y1 {
-                            return EllipticCurvePoint::Infinity
-                        }
+                    if x1 == x2 && y2 == y1 - y1 - y1 {
+                        return EllipticCurvePoint::Infinity;
+                    }
 
-                        let l = if x1 == x2 && y1 == y2 {
-                            let t = x1 * x1 * FiniteFieldElement::new(U512::from(3u8), p) + a;
-                            let u = y1 * FiniteFieldElement::new(U512::from(2), p);
-                            let a = t / u;
-                            a
-                        } else {
-                            (y2 - y1) / (x2 - x1)
-                        };
-                        let x = l * l - x1 - x2;
-                        let y = l * (x1 - x) - y1;
+                    let l = if x1 == x2 && y1 == y2 {
+                        let t = x1 * x1 * FiniteFieldElement::new(U512::from(3u8), p) + a;
+                        let u = y1 * FiniteFieldElement::new(U512::from(2), p);
+                        let a = t / u;
+                        a
+                    } else {
+                        (y2 - y1) / (x2 - x1)
+                    };
+                    let x = l * l - x1 - x2;
+                    let y = l * (x1 - x) - y1;
 
-                        EllipticCurvePoint::Point { x, y, a, b }
-                    },
-                    EllipticCurvePoint::Infinity => self
+                    EllipticCurvePoint::Point { x, y, a, b }
                 }
+                EllipticCurvePoint::Infinity => self,
             },
-            EllipticCurvePoint::Infinity => rhs
+            EllipticCurvePoint::Infinity => rhs,
         }
     }
 }

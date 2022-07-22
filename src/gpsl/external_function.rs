@@ -1,11 +1,6 @@
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::gpsl::{permission::Permission, variable::Variable};
-use std::{
-    io::{BufRead, BufReader, Read, Write},
-    net::TcpStream,
-    sync::{Arc, Mutex},
-};
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub enum ExternalFuncStatus {

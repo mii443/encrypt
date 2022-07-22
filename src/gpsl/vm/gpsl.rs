@@ -6,7 +6,7 @@ use crate::gpsl::variable::*;
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
 use std::string::*;
 use std::sync::{Arc, Mutex};
@@ -106,7 +106,7 @@ impl GPSL {
         None
     }
 
-    pub fn extract_number(node: Variable) -> Result<usize, String> {
+    pub fn extract_number(node: Variable) -> Result<i64, String> {
         match node {
             Variable::Number { value } => Ok(value),
             _ => Err(String::from("Not a number")),
@@ -148,7 +148,6 @@ impl GPSL {
                                 args: args.clone(),
                             })
                             .unwrap();
-                            println!("{}", server_function_call);
 
                             stream
                                 .write_fmt(format_args!("{}\n", server_function_call))
@@ -480,16 +479,15 @@ impl GPSL {
                     (accept, reject)
                 };
 
-                let mode = if let Node::Mode { mode } = *mode.unwrap_or(Box::new(Node::None)) {
+                let _ = if let Node::Mode { mode } = *mode.unwrap_or(Box::new(Node::None)) {
                     mode
                 } else {
                     "".to_string()
                 };
-                println!("Mode: {}", mode);
 
                 self.blocks.push_front(Block {
-                    accept: accept,
-                    reject: reject,
+                    accept,
+                    reject,
                     variables: HashMap::new(),
                     is_split: false,
                 });

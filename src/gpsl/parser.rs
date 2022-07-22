@@ -1,9 +1,7 @@
 use crate::gpsl::node::*;
 use crate::gpsl::token::*;
 use crate::gpsl::tokenizer::*;
-use env_logger;
-use log::*;
-use log::{debug, error, info, warn};
+use log::debug;
 use std::collections::HashMap;
 
 #[derive(Clone)]
@@ -33,7 +31,6 @@ impl Parser {
     pub fn function(&mut self) -> Result<Box<Node>, String> {
         // parse attribute
         let attribute = if self.tokenizer.current_token().str == String::from("#") {
-            println!("{:?}", self.tokenizer.current_token());
             Some(self.attribute()?)
         } else {
             Some(Box::new(Node::Attribute {
@@ -41,8 +38,6 @@ impl Parser {
                 args: vec![],
             }))
         };
-
-        println!("{:?}", self.tokenizer.current_token());
 
         if self
             .tokenizer
@@ -92,7 +87,7 @@ impl Parser {
 
     /*
         program: stmt* ;
-    */
+
     pub fn program(&mut self) -> Result<Vec<Box<Node>>, String> {
         let mut nodes: Vec<Box<Node>> = vec![];
         loop {
@@ -102,7 +97,7 @@ impl Parser {
                 return Ok(nodes);
             }
         }
-    }
+    }*/
 
     /*
         stmt: let

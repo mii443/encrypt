@@ -3,9 +3,8 @@ use gpsl::external_function::ExternalFuncReturn;
 use gpsl::external_function::ExternalFuncStatus;
 use gpsl::node::Node;
 use gpsl::node::NodeKind;
-use gpsl::variable::Variable;
 use gpsl::vm::gpsl::ServerFunctionCall;
-use gpsl::{external_function::STD_FUNC, parser::*, source::*, tokenizer::*, vm::gpsl::*};
+use gpsl::{external_function::STD_FUNC, source::*, tokenizer::*, vm::gpsl::*};
 use log::*;
 use std::env;
 use std::io::BufRead;
@@ -89,6 +88,8 @@ fn listen_tcp_server(port: u16) -> TcpStream {
 }
 
 fn main() {
+    env::set_var("RUST_LOG", "info");
+    env_logger::init();
     let args = Args::parse();
 
     match &*args.mode {
@@ -105,47 +106,63 @@ fn main() {
 }
 
 fn server(args: Args) {
-    let mut stream = listen_tcp_server(args.port.unwrap());
+    loop {
+        info!("GPSL Server listening on port {}", args.port.unwrap());
+        let mut stream = listen_tcp_server(args.port.unwrap());
 
-    debug!("Receiving functions...");
-    let mut buf = String::default();
-    BufReader::new(stream.try_clone().unwrap())
-        .read_line(&mut buf)
-        .unwrap();
+        debug!("Receiving functions...");
+        let mut buf = String::default();
+        BufReader::new(stream.try_clone().unwrap())
+            .read_line(&mut buf)
+            .unwrap();
 
-    let functions: HashMap<String, Box<Node>> = serde_json::from_str(&buf).unwrap();
-    debug!("Received: {:?}", functions);
+        let functions: HashMap<String, Box<Node>> = serde_json::from_str(&buf).unwrap();
+        debug!("Received: {:?}", functions);
 
-    let mut gpsl = GPSL::new(
-        Source::new(String::default()),
-        Some(functions),
-        Some(HashMap::new()),
-        Some(HashMap::new()),
-        vec![STD_FUNC],
-    );
+        let mut gpsl = GPSL::new(
+            Source::new(String::default()),
+            Some(functions),
+            Some(HashMap::new()),
+            Some(HashMap::new()),
+            vec![STD_FUNC],
+        );
 
-    debug!("Receiving function call...");
-    BufReader::new(stream.try_clone().unwrap())
-        .read_line(&mut buf)
-        .unwrap();
-    debug!("Received");
-    debug!("{}", buf);
+        stream.write_fmt(format_args!("received\n")).unwrap();
 
-    let function_call: ServerFunctionCall = serde_json::from_str(&buf).unwrap();
+        loop {
+            debug!("Receiving function call...");
+            buf = String::default();
+            if let Err(_) = BufReader::new(stream.try_clone().unwrap()).read_line(&mut buf) {
+                break;
+            }
+            debug!("Received");
+            debug!("{}", buf);
 
-    let result = gpsl.run(function_call.name, function_call.args);
-    let external_function_return = ExternalFuncReturn {
-        status: ExternalFuncStatus::SUCCESS,
-        value: Some(result.unwrap()),
-    };
+            let function_call: ServerFunctionCall =
+                if let Ok(function_call) = serde_json::from_str(&buf) {
+                    function_call
+                } else {
+                    break;
+                };
 
-    debug!("Sending result...");
-    stream
-        .write_fmt(format_args!(
-            "{}\n",
-            serde_json::to_string(&external_function_return).unwrap()
-        ))
-        .unwrap();
+            trace!("Running function: {}", function_call.name);
+
+            let result = gpsl.run(function_call.name, function_call.args);
+            let external_function_return = ExternalFuncReturn {
+                status: ExternalFuncStatus::SUCCESS,
+                value: Some(result.unwrap()),
+            };
+
+            debug!("Sending result...");
+            if let Err(_) = stream.write_fmt(format_args!(
+                "{}\n",
+                serde_json::to_string(&external_function_return).unwrap()
+            )) {
+                break;
+            }
+        }
+        stream.shutdown(std::net::Shutdown::Both).unwrap();
+    }
 }
 
 fn client(args: Args) {
@@ -167,7 +184,6 @@ fn client(args: Args) {
             Node::Function { attribute, .. } => match *(attribute.unwrap()) {
                 Node::Attribute { name, args } => {
                     if name == String::from("server") {
-                        println!("{:?}", function);
                         let ip = {
                             let mut t_ip = None;
                             for arg in args {
@@ -175,7 +191,6 @@ fn client(args: Args) {
                                     Node::Operator { kind, lhs, rhs } => {
                                         if kind == NodeKind::ASSIGN {
                                             if lhs.extract_string() == String::from("ip") {
-                                                println!("IP: {}", rhs.extract_string());
                                                 Some(rhs.extract_string())
                                             } else {
                                                 None
@@ -213,6 +228,13 @@ fn client(args: Args) {
                 serde_json::to_string(&functions).unwrap()
             ))
             .unwrap();
+        let mut buf = String::default();
+        BufReader::new(stream.try_clone().unwrap())
+            .read_line(&mut buf)
+            .unwrap();
+        if buf != String::from("received\n") {
+            panic!("Server did not receive functions");
+        }
         servers.insert(ip, Arc::new(Mutex::new(stream)));
     }
 

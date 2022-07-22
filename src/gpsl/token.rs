@@ -12,6 +12,6 @@ pub enum TokenKind {
 #[derive(Clone, Debug)]
 pub struct Token {
     pub kind: TokenKind,
-    pub num: usize,
+    pub num: i64,
     pub str: String,
 }

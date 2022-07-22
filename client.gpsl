@@ -4,6 +4,17 @@ fn add(a: num, b: num) {
     return a + b;
 }
 
+#[server(ip = "localhost:8080")]
+fn mul(a: num, b: num) {
+    return a * b;
+}
+
 fn main() {
     println(add(1, 2));
+    println(mul(2, 2));
+    let i: num;
+    for (i = 0; i < 2000; i += 1) {
+        println(mul(i, i));
+    }
 }
+

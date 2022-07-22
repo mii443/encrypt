@@ -76,7 +76,7 @@ impl Tokenizer {
         Ok(val.to_string())
     }
 
-    pub fn expect_number(&mut self) -> Result<usize, String> {
+    pub fn expect_number(&mut self) -> Result<i64, String> {
         let kind = self.current_token().kind;
         debug!("Expect NUM {:?}", self.current_token());
         if kind != TokenKind::NUMBER {
@@ -102,7 +102,7 @@ impl Tokenizer {
         }
     }
 
-    pub fn create_number(num: usize) -> Token {
+    pub fn create_number(num: i64) -> Token {
         Token {
             kind: TokenKind::NUMBER,
             num: num,
