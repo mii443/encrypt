@@ -174,7 +174,16 @@ impl GPSL {
                             let function_args = function.1.extract_function_args();
                             let mut args: HashMap<String, Variable> = HashMap::new();
                             for (i, arg_name) in function_args.0.iter().enumerate() {
-                                args.insert(arg_name.clone(), args_value[i].clone());
+                                if function_args.1[i] == args_value[i].get_type() {
+                                    args.insert(arg_name.clone(), args_value[i].clone());
+                                } else {
+                                    return Err(format!(
+                                        "Argument {} type mismatch: {} != {}",
+                                        arg_name,
+                                        function_args.1[i],
+                                        args_value[i].get_type()
+                                    ));
+                                }
                             }
 
                             let server_function_call = serde_json::to_string(&ServerFunctionCall {
@@ -216,20 +225,47 @@ impl GPSL {
                         functions.contains_key(&function_name)
                     );
                     if functions.contains_key(&function_name) {
-                        if let Node::Function { body, .. } = &*(functions[&function_name]) {
+                        if let Node::Function {
+                            body,
+                            args_name,
+                            args_type,
+                            ..
+                        } = &*(functions[&function_name])
+                        {
+                            let block = {
+                                let blocks = self.blocks.clone();
+                                blocks.front().unwrap().clone()
+                            };
+
+                            let mut args: HashMap<String, LocalVariable> = HashMap::new();
+                            for (i, name) in args_name.iter().enumerate() {
+                                if args_type[i] == args_value[i].get_type() {
+                                    args.insert(
+                                        name.clone(),
+                                        LocalVariable {
+                                            name: name.clone(),
+                                            value: Some(args_value[i].clone()),
+                                            status: VariableStatus::default(),
+                                        },
+                                    );
+                                } else {
+                                    return Err(format!(
+                                        "Argument {} type mismatch: {} != {}",
+                                        name,
+                                        args_type[i],
+                                        args_value[i].get_type()
+                                    ));
+                                }
+                            }
+
+                            self.blocks.push_front(Block {
+                                accept: block.accept.clone(),
+                                reject: block.reject.clone(),
+                                variables: args,
+                                is_split: true,
+                            });
+
                             for program in body {
-                                let block = {
-                                    let blocks = self.blocks.clone();
-                                    blocks.front().unwrap().clone()
-                                };
-
-                                self.blocks.push_front(Block {
-                                    accept: block.accept.clone(),
-                                    reject: block.reject.clone(),
-                                    variables: HashMap::new(),
-                                    is_split: true,
-                                });
-
                                 let res = self.evaluate(Box::new(*program.clone()));
 
                                 if let Ok(Some(res)) = res {
@@ -595,7 +631,8 @@ impl GPSL {
                 value,
             } => {
                 if let Some(value) = value {
-                    if let Ok(Some(value)) = self.evaluate(value) {
+                    let value = self.evaluate(value);
+                    if let Ok(Some(value)) = value.clone() {
                         if value.get_type() == var_type.unwrap_or(value.get_type()) {
                             self.blocks.front_mut().unwrap().variables.insert(
                                 name.clone(),
@@ -609,8 +646,10 @@ impl GPSL {
                         } else {
                             return Err(String::from("Type mismatch."));
                         }
+                    } else if let Err(err) = value {
+                        return Err(err);
                     } else {
-                        return Err(String::from("Cannot evaluate value."));
+                        return Err(String::from("Unexpected error in DEFINE."));
                     }
                 } else {
                     let value = match &*var_type.unwrap() {
