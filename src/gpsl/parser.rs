@@ -116,14 +116,39 @@ impl Parser {
         {
             let ident = self.tokenizer.current_token().clone();
             self.tokenizer.expect_kind(TokenKind::IDENT)?;
-            self.tokenizer.expect(String::from(":"))?;
-            let var_type = self.tokenizer.current_token().clone();
-            self.tokenizer.expect_kind(TokenKind::IDENT)?;
-            self.tokenizer.expect(String::from(";"))?;
-            return Ok(Box::new(Node::Define {
-                name: ident.str,
-                var_type: var_type.str,
-            }));
+
+            let var_type = if self
+                .tokenizer
+                .consume_kind_str(TokenKind::RESERVED, String::from(":"))
+            {
+                let var_type = self.tokenizer.current_token().clone();
+                self.tokenizer.expect_kind(TokenKind::IDENT)?;
+                Some(var_type.str)
+            } else {
+                None
+            };
+
+            if self
+                .tokenizer
+                .consume_kind_str(TokenKind::RESERVED, String::from("="))
+            {
+                let value = self.expr()?;
+                self.tokenizer
+                    .consume_kind_str(TokenKind::RESERVED, String::from(";"));
+                return Ok(Box::new(Node::Define {
+                    name: ident.str,
+                    var_type,
+                    value: Some(value),
+                }));
+            } else {
+                self.tokenizer
+                    .consume_kind_str(TokenKind::RESERVED, String::from(";"));
+                return Ok(Box::new(Node::Define {
+                    name: ident.str,
+                    var_type,
+                    value: None,
+                }));
+            }
         }
 
         debug!("{}: parsing permission", line!());
@@ -164,7 +189,8 @@ impl Parser {
 
         if self.tokenizer.consume_kind(TokenKind::RETURN) {
             let node = Node::Return { lhs: self.expr()? };
-            self.tokenizer.expect(String::from(";"))?;
+            self.tokenizer
+                .consume_kind_str(TokenKind::RESERVED, String::from(";"));
             return Ok(Box::new(node));
         }
 
@@ -202,11 +228,12 @@ impl Parser {
                     self.tokenizer.expect(String::from("("))?;
                     let init: Option<Box<Node>> =
                         if self.tokenizer.current_token().str != String::from(";") {
-                            Some(self.expr()?)
+                            Some(self.stmt()?)
                         } else {
                             None
                         };
-                    self.tokenizer.expect(String::from(";"))?;
+                    self.tokenizer
+                        .consume_kind_str(TokenKind::RESERVED, String::from(";"));
 
                     let condition: Option<Box<Node>> =
                         if self.tokenizer.current_token().str != String::from(";") {
@@ -214,7 +241,8 @@ impl Parser {
                         } else {
                             None
                         };
-                    self.tokenizer.expect(String::from(";"))?;
+                    self.tokenizer
+                        .consume_kind_str(TokenKind::RESERVED, String::from(";"));
 
                     let update: Option<Box<Node>> =
                         if self.tokenizer.current_token().str != String::from(")") {
@@ -238,7 +266,8 @@ impl Parser {
         }
 
         let node = self.expr();
-        self.tokenizer.expect(String::from(";"))?;
+        self.tokenizer
+            .consume_kind_str(TokenKind::RESERVED, String::from(";"));
         return node;
     }
 

@@ -16,7 +16,7 @@ stmt: let
     | expr SEMICOLON
     ;
 
-let: LET IDENT COLON IDENT SEMICOLON ;
+let: LET IDENT ((COLON IDENT (EQ expr)?) | EQ expr) SEMICOLON ;
 block: permission? LCURL stmt* RCURL ;
 return: RETURN expr? SEMICOLON ;
 if: IF LPAREN expr RPAREN stmt (ELSE stmt)? ;

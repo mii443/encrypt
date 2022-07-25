@@ -72,7 +72,8 @@ pub enum Node {
     },
     Define {
         name: String,
-        var_type: String,
+        var_type: Option<String>,
+        value: Option<Box<Node>>,
     },
     Call {
         name: String,

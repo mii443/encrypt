@@ -1,5 +1,6 @@
 use primitive_types::U512;
 use serde::{Deserialize, Serialize};
+use std::io::{stdout, Write};
 
 use crate::{
     elliptic_curve::{elliptic_curve::EllipticCurvePoint, encryption::Encryption},
@@ -41,6 +42,7 @@ pub const STD_FUNC: fn(
             let encryption = data.encryption;
             let plain = match args[0] {
                 Variable::Number { value } => U512::from(value),
+                Variable::U512 { value } => value,
                 _ => panic!("encrypt: first argument must be a number"),
             };
             let ec = encryption.plain_to_ec_point(plain);
@@ -82,12 +84,37 @@ pub const STD_FUNC: fn(
                         }),
                     };
                 }
+                Variable::Text { value } => {
+                    return ExternalFuncReturn {
+                        status: ExternalFuncStatus::SUCCESS,
+                        value: Some(Variable::U512 {
+                            value: U512::from_dec_str(&value).unwrap(),
+                        }),
+                    };
+                }
                 _ => {
                     return ExternalFuncReturn {
                         status: ExternalFuncStatus::ERROR,
                         value: None,
                     };
                 }
+            }
+        }
+        "read_line" => {
+            if accept.contains(&Permission::StdIo) && !reject.contains(&Permission::StdIo) {
+                let mut buffer = String::default();
+                std::io::stdin().read_line(&mut buffer).unwrap();
+                return ExternalFuncReturn {
+                    status: ExternalFuncStatus::SUCCESS,
+                    value: Some(Variable::Text {
+                        value: String::from(buffer.trim()),
+                    }),
+                };
+            } else {
+                return ExternalFuncReturn {
+                    status: ExternalFuncStatus::REJECTED,
+                    value: None,
+                };
             }
         }
         "println" => {
@@ -121,6 +148,8 @@ pub const STD_FUNC: fn(
                     Variable::PairedEncrypted { value } => print!("{:x}", value.value),
                     _ => {}
                 }
+
+                stdout().flush().unwrap();
                 ExternalFuncReturn {
                     status: ExternalFuncStatus::SUCCESS,
                     value: None,

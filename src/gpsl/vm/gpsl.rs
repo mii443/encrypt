@@ -49,7 +49,7 @@ pub struct GPSL {
 #[derive(Clone, Debug)]
 pub struct LocalVariable {
     pub name: String,
-    pub value: Variable,
+    pub value: Option<Variable>,
     pub status: VariableStatus,
 }
 
@@ -286,7 +286,7 @@ impl GPSL {
                     if let Ok(Some(rhs)) = rhs {
                         match *(lhs.clone()) {
                             Node::Lvar { value } => {
-                                self.get_local_var_mut(&value).unwrap().value = rhs;
+                                self.get_local_var_mut(&value).unwrap().value = Some(rhs);
                                 self.get_local_var_mut(&value).unwrap().status.initialized = true;
                             }
                             _ => {}
@@ -388,7 +388,9 @@ impl GPSL {
                 }
             }
             Node::Lvar { value } => {
-                return Ok(Some(self.get_local_var(&value).unwrap().value.clone()));
+                return Ok(Some(
+                    self.get_local_var(&value).unwrap().value.clone().unwrap(),
+                ));
             }
             Node::Return { lhs } => {
                 if let Ok(Some(lhs)) = self.evaluate(lhs) {
@@ -555,32 +557,59 @@ impl GPSL {
 
                 return Ok(None);
             }
-            Node::Define { name, var_type } => {
-                let value = if var_type == "num" {
-                    Variable::Number { value: 0 }
-                } else if var_type == "String" {
-                    Variable::Text {
-                        value: String::default(),
-                    }
-                } else if var_type == "eep" {
-                    Variable::PureEncrypted {
-                        value: EncryptedEllipticCurvePoint::default(),
+            Node::Define {
+                name,
+                var_type,
+                value,
+            } => {
+                if let Some(value) = value {
+                    if let Ok(Some(value)) = self.evaluate(value) {
+                        if value.get_type() == var_type.unwrap_or(value.get_type()) {
+                            self.blocks.front_mut().unwrap().variables.insert(
+                                name.clone(),
+                                LocalVariable {
+                                    name,
+                                    value: Some(value),
+                                    status: VariableStatus { initialized: true },
+                                },
+                            );
+                            return Ok(None);
+                        } else {
+                            return Err(String::from("Type mismatch."));
+                        }
+                    } else {
+                        return Err(String::from("Cannot evaluate value."));
                     }
                 } else {
-                    return Err(format!("{}: 未知の型です。", var_type));
-                };
-                self.blocks.front_mut().unwrap().variables.insert(
-                    name.clone(),
-                    LocalVariable {
-                        name,
-                        value,
-                        status: VariableStatus::default(),
-                    },
-                );
+                    let value = match &*var_type.unwrap() {
+                        "num" => Variable::Number { value: 0 },
+                        "String" => Variable::Text {
+                            value: String::new(),
+                        },
+                        "eep" => Variable::PureEncrypted {
+                            value: EncryptedEllipticCurvePoint::default(),
+                        },
+                        "U512" => Variable::U512 {
+                            value: U512::default(),
+                        },
+                        _ => {
+                            panic!("Invalid variable type.");
+                        }
+                    };
 
-                debug!("Define: {:?}", self.blocks.front());
+                    self.blocks.front_mut().unwrap().variables.insert(
+                        name.clone(),
+                        LocalVariable {
+                            name,
+                            value: Some(value),
+                            status: VariableStatus::default(),
+                        },
+                    );
 
-                return Ok(None);
+                    debug!("Define: {:?}", self.blocks.front());
+
+                    return Ok(None);
+                }
             }
             _ => Ok(None),
         }
@@ -600,7 +629,7 @@ impl GPSL {
                 name.clone(),
                 LocalVariable {
                     name: name.clone(),
-                    value,
+                    value: Some(value),
                     status: VariableStatus::default(),
                 },
             );

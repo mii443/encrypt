@@ -1,6 +1,6 @@
 
 
-#[server(ip = "localhost:8080")]
+#[server(ip = "172.25.5.189:8080")]
 fn encrypt_add(a: eep, b: eep) {
     print("a: ");
     println(a);
@@ -11,14 +11,20 @@ fn encrypt_add(a: eep, b: eep) {
 
 
 fn main() {
-    let enc_a: eep;
-    let enc_b: eep;
+    print("Input a: ")
+    let a = to_u512(read_line())
 
-    enc_a = encrypt(10);
-    enc_b = encrypt(4);
+    print("Input b: ")
+    let b = to_u512(read_line())
 
-    let enc_res: eep;
-    enc_res = encrypt_add(enc_a, enc_b);
+    let enc_a = encrypt(a)
+    let enc_b = encrypt(b)
 
-    println(decrypt(enc_res)); 
+    let enc_res = encrypt_add(enc_a, enc_b)
+
+    println(decrypt(enc_res))
+
+    for (let i=0 i<10 i+=1) {
+        println(i)
+    }
 }

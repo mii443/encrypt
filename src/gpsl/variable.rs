@@ -15,3 +15,17 @@ pub enum Variable {
     U512 { value: U512 },
     None {},
 }
+
+impl Variable {
+    pub fn get_type(&self) -> String {
+        match self {
+            Variable::Number { .. } => "num".to_string(),
+            Variable::Text { .. } => "String".to_string(),
+            Variable::Return { .. } => "return".to_string(),
+            Variable::PureEncrypted { .. } => "eep".to_string(),
+            Variable::PairedEncrypted { .. } => "eep_p".to_string(),
+            Variable::U512 { .. } => "U512".to_string(),
+            Variable::None { .. } => "none".to_string(),
+        }
+    }
+}
