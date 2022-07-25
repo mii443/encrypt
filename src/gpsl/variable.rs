@@ -13,6 +13,7 @@ pub enum Variable {
     PureEncrypted { value: EncryptedEllipticCurvePoint },
     PairedEncrypted { value: FiniteFieldElement },
     U512 { value: U512 },
+    Vec { value: Vec<Variable> },
     None {},
 }
 
@@ -25,6 +26,14 @@ impl Variable {
             Variable::PureEncrypted { .. } => "eep".to_string(),
             Variable::PairedEncrypted { .. } => "eep_p".to_string(),
             Variable::U512 { .. } => "U512".to_string(),
+            Variable::Vec { value } => {
+                let mut type_str = "Vec<".to_string();
+                for v in value {
+                    type_str += &v.get_type();
+                }
+                type_str += ">";
+                type_str
+            }
             Variable::None { .. } => "none".to_string(),
         }
     }

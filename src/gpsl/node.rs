@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::gpsl_type::GPSLType;
+
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum NodeKind {
     ASSIGN,
@@ -18,9 +20,12 @@ pub enum Node {
     Function {
         name: String,
         args_name: Vec<String>,
-        args_type: Vec<String>,
+        args_type: Vec<GPSLType>,
         body: Vec<Box<Node>>,
         attribute: Option<Box<Node>>,
+    },
+    GPSLType {
+        value: GPSLType,
     },
     Attribute {
         name: String,
@@ -72,7 +77,7 @@ pub enum Node {
     },
     Define {
         name: String,
-        var_type: Option<String>,
+        var_type: Option<GPSLType>,
         value: Option<Box<Node>>,
     },
     Call {
@@ -104,7 +109,7 @@ impl Node {
         }
     }
 
-    pub fn extract_function_args(&self) -> (Vec<String>, Vec<String>) {
+    pub fn extract_function_args(&self) -> (Vec<String>, Vec<GPSLType>) {
         match self {
             Node::Function {
                 args_name,

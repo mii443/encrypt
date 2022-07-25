@@ -4,6 +4,8 @@ use crate::gpsl::tokenizer::*;
 use log::debug;
 use std::collections::HashMap;
 
+use super::gpsl_type::GPSLType;
+
 #[derive(Clone)]
 pub struct Parser {
     pub tokenizer: Tokenizer,
@@ -58,11 +60,11 @@ impl Parser {
                 let name = self.tokenizer.expect_ident()?;
                 self.tokenizer
                     .consume_kind_str(TokenKind::RESERVED, String::from(":"));
-                let type_str = self.tokenizer.expect_ident()?;
+                let gpsl_type = self.gpsl_type()?;
                 self.tokenizer
                     .consume_kind_str(TokenKind::RESERVED, String::from(","));
                 args_name.push(name);
-                args_type.push(type_str);
+                args_type.push(gpsl_type);
             }
 
             let mut nodes: Vec<Box<Node>> = vec![];
@@ -121,9 +123,8 @@ impl Parser {
                 .tokenizer
                 .consume_kind_str(TokenKind::RESERVED, String::from(":"))
             {
-                let var_type = self.tokenizer.current_token().clone();
-                self.tokenizer.expect_kind(TokenKind::IDENT)?;
-                Some(var_type.str)
+                let var_type = self.gpsl_type()?;
+                Some(var_type)
             } else {
                 None
             };
@@ -198,9 +199,7 @@ impl Parser {
             match &*self.tokenizer.current_token().str {
                 "if" => {
                     self.tokenizer.cursor += 1;
-                    self.tokenizer.expect(String::from("("))?;
                     let condition = self.expr()?;
-                    self.tokenizer.expect(String::from(")"))?;
                     let stmt = self.stmt()?;
                     let mut else_stmt: Option<Box<Node>> = None;
                     if self
@@ -217,9 +216,7 @@ impl Parser {
                 }
                 "while" => {
                     self.tokenizer.cursor += 1;
-                    self.tokenizer.expect(String::from("("))?;
                     let condition = self.expr()?;
-                    self.tokenizer.expect(String::from(")"))?;
                     let stmt = self.stmt()?;
                     return Ok(Box::new(Node::While { condition, stmt }));
                 }
@@ -269,6 +266,49 @@ impl Parser {
         self.tokenizer
             .consume_kind_str(TokenKind::RESERVED, String::from(";"));
         return node;
+    }
+
+    /*
+        type: IDENT (LT (type COMMA?)+ BT)? ;
+    */
+    pub fn gpsl_type(&mut self) -> Result<GPSLType, String> {
+        let ident = self.tokenizer.current_token().clone();
+        self.tokenizer.expect_kind(TokenKind::IDENT)?;
+        if self
+            .tokenizer
+            .consume_kind_str(TokenKind::RESERVED, String::from("<"))
+        {
+            let mut types: Vec<GPSLType> = vec![];
+            loop {
+                if self
+                    .tokenizer
+                    .consume_kind_str(TokenKind::RESERVED, String::from(">"))
+                {
+                    return Ok(GPSLType {
+                        type_str: ident.str,
+                        child: types,
+                    });
+                } else {
+                    types.push(self.gpsl_type()?);
+                    if self
+                        .tokenizer
+                        .consume_kind_str(TokenKind::RESERVED, String::from(","))
+                    {
+                        continue;
+                    } else {
+                        return Ok(GPSLType {
+                            type_str: ident.str,
+                            child: types,
+                        });
+                    }
+                }
+            }
+        } else {
+            return Ok(GPSLType {
+                type_str: ident.str,
+                child: vec![],
+            });
+        }
     }
 
     /*

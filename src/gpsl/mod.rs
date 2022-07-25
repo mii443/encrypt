@@ -1,4 +1,5 @@
 pub mod external_function;
+pub mod gpsl_type;
 pub mod node;
 pub mod parser;
 pub mod permission;
