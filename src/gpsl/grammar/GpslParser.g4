@@ -36,7 +36,7 @@ add: mul (ADD mul | SUB mul | SUB_ASSIGNMENT mul | ADD_ASSIGNMENT mul)* ;
 mul: unary (MUL unary | DIV unary | DIV_ASSIGNMENT unary | MUL_ASSIGNMENT unary)* ;
 
 primary: LPAREN expr RPAREN | function_call | TEXT | NUM ;
-function_call: IDENT LPAREN (unary COMMA?)* RPAREN ;
+function_call: IDENT LPAREN (stmt COMMA?)* RPAREN ;
 
 unary: ADD primary
     | SUB primary

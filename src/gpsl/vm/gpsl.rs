@@ -301,20 +301,52 @@ impl GPSL {
                 if let Some(lhs) = lhs.clone() {
                     if let Some(rhs) = rhs {
                         match kind {
-                            NodeKind::ADD => match GPSL::extract_number(lhs.clone()) {
-                                Ok(lhs) => match GPSL::extract_number(rhs) {
-                                    Ok(rhs) => Ok(Some(Variable::Number { value: lhs + rhs })),
-                                    Err(err) => Err(err),
+                            NodeKind::ADD => match lhs.clone() {
+                                Variable::Number { value: lhs } => match rhs {
+                                    Variable::Number { value: rhs } => {
+                                        Ok(Some(Variable::Number { value: lhs + rhs }))
+                                    }
+                                    Variable::Text { value: rhs } => Ok(Some(Variable::Text {
+                                        value: format!("{}{}", lhs, rhs),
+                                    })),
+                                    _ => Err("Cannot add non-number to number.".to_string()),
                                 },
-                                Err(_) => match GPSL::extract_eep(lhs) {
-                                    Ok(lhs) => match GPSL::extract_eep(rhs) {
-                                        Ok(rhs) => {
-                                            Ok(Some(Variable::PureEncrypted { value: lhs + rhs }))
-                                        }
-                                        Err(err) => Err(err),
-                                    },
-                                    Err(err) => Err(err),
+                                Variable::PureEncrypted { value: lhs } => match rhs {
+                                    Variable::PureEncrypted { value: rhs } => {
+                                        Ok(Some(Variable::PureEncrypted { value: lhs + rhs }))
+                                    }
+                                    Variable::Text { value: rhs } => Ok(Some(Variable::Text {
+                                        value: format!("{}{}", lhs, rhs),
+                                    })),
+                                    _ => Err("Cannot add non-number to number.".to_string()),
                                 },
+                                Variable::U512 { value: lhs } => match rhs {
+                                    Variable::U512 { value: rhs } => {
+                                        Ok(Some(Variable::U512 { value: lhs + rhs }))
+                                    }
+                                    Variable::Text { value: rhs } => Ok(Some(Variable::Text {
+                                        value: lhs.to_string() + &rhs,
+                                    })),
+                                    _ => Err("Cannot add non-number to number.".to_string()),
+                                },
+                                Variable::Text { value: lhs } => match rhs {
+                                    Variable::Text { value: rhs } => Ok(Some(Variable::Text {
+                                        value: format!("{}{}", lhs, rhs),
+                                    })),
+                                    Variable::Number { value: rhs } => Ok(Some(Variable::Text {
+                                        value: format!("{}{}", lhs, rhs),
+                                    })),
+                                    Variable::PureEncrypted { value: rhs } => {
+                                        Ok(Some(Variable::Text {
+                                            value: format!("{}{}", lhs, rhs),
+                                        }))
+                                    }
+                                    Variable::U512 { value: rhs } => Ok(Some(Variable::Text {
+                                        value: format!("{}{}", lhs, rhs),
+                                    })),
+                                    _ => Err("Cannot add non-number to number.".to_string()),
+                                },
+                                _ => Err("Cannot add non-number.".to_string()),
                             },
                             NodeKind::DIV => match GPSL::extract_number(lhs) {
                                 Ok(lhs) => match GPSL::extract_number(rhs) {

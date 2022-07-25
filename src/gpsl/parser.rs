@@ -480,7 +480,7 @@ impl Parser {
             if self.tokenizer.consume(String::from("(")) {
                 let mut args: Vec<Box<Node>> = vec![];
                 while self.tokenizer.current_token().str != ")" {
-                    args.push(self.unary()?);
+                    args.push(self.stmt()?);
                     self.tokenizer.consume(String::from(","));
                 }
 
