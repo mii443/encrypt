@@ -38,12 +38,27 @@ pub const STD_FUNC: fn(
 ) -> ExternalFuncReturn = |name, args, accept, reject, data| {
     let name = name.as_str();
     match name {
+        "length" => {
+            let vec = args[0].clone();
+            match vec {
+                Variable::Vec { value, .. } => ExternalFuncReturn {
+                    status: ExternalFuncStatus::SUCCESS,
+                    value: Some(Variable::Number {
+                        value: value.len() as i64,
+                    }),
+                },
+                _ => ExternalFuncReturn {
+                    status: ExternalFuncStatus::ERROR,
+                    value: None,
+                },
+            }
+        }
         "push" => {
             let mut args = args;
-            let mut vec = args[0].clone();
+            let vec = args[0].clone();
             match vec {
                 Variable::Vec {
-                    value: mut value,
+                    mut value,
                     gpsl_type,
                 } => {
                     args.remove(0);
