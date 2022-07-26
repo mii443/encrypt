@@ -4,7 +4,7 @@ use std::io::{stdout, Write};
 
 use crate::{
     elliptic_curve::{elliptic_curve::EllipticCurvePoint, encryption::Encryption},
-    gpsl::{permission::Permission, variable::Variable},
+    gpsl::{gpsl_type::GPSLType, permission::Permission, variable::Variable},
 };
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
@@ -38,6 +38,57 @@ pub const STD_FUNC: fn(
 ) -> ExternalFuncReturn = |name, args, accept, reject, data| {
     let name = name.as_str();
     match name {
+        "push" => {
+            let mut args = args;
+            let mut vec = args[0].clone();
+            match vec {
+                Variable::Vec {
+                    value: mut value,
+                    gpsl_type,
+                } => {
+                    args.remove(0);
+                    for arg in args {
+                        value.push(arg);
+                    }
+                    println!("vec push: {:?}", value.clone());
+                    return ExternalFuncReturn {
+                        status: ExternalFuncStatus::SUCCESS,
+                        value: Some(Variable::Vec { value, gpsl_type }),
+                    };
+                }
+                _ => {
+                    println!("push: argument is not a vector");
+                    return ExternalFuncReturn {
+                        status: ExternalFuncStatus::ERROR,
+                        value: None,
+                    };
+                }
+            }
+        }
+        "vec" => {
+            let mut vec = Vec::new();
+            let typ = GPSLType::from_str(&args[0].get_type()).unwrap();
+            for arg in args {
+                if arg.get_type() == typ.to_str() {
+                    vec.push(arg);
+                } else {
+                    return ExternalFuncReturn {
+                        status: ExternalFuncStatus::ERROR,
+                        value: None,
+                    };
+                }
+            }
+            ExternalFuncReturn {
+                status: ExternalFuncStatus::SUCCESS,
+                value: Some(Variable::Vec {
+                    value: vec,
+                    gpsl_type: GPSLType {
+                        type_str: "Vec".to_string(),
+                        child: vec![typ],
+                    },
+                }),
+            }
+        }
         "encrypt" => {
             let encryption = data.encryption;
             let plain = match args[0] {
@@ -125,6 +176,23 @@ pub const STD_FUNC: fn(
                     Variable::U512 { value } => println!("{:x}", value),
                     Variable::PureEncrypted { value } => println!("{}", value),
                     Variable::PairedEncrypted { value } => println!("{:x}", value.value),
+                    Variable::Vec { value, gpsl_type } => {
+                        STD_FUNC(
+                            "print".to_string(),
+                            vec![Variable::Vec {
+                                value: value.clone(),
+                                gpsl_type: gpsl_type.clone(),
+                            }],
+                            accept.clone(),
+                            reject.clone(),
+                            ExternalFunctionCallData {
+                                encryption: data.encryption.clone(),
+                                private_key: data.private_key.clone(),
+                                public_key: data.public_key.clone(),
+                            },
+                        );
+                        println!("");
+                    }
                     _ => {}
                 }
                 ExternalFuncReturn {
@@ -146,6 +214,29 @@ pub const STD_FUNC: fn(
                     Variable::U512 { value } => print!("{:x}", value),
                     Variable::PureEncrypted { value } => print!("{}", value),
                     Variable::PairedEncrypted { value } => print!("{:x}", value.value),
+                    Variable::Vec { value, .. } => {
+                        print!("[");
+                        let mut f = false;
+                        for val in value {
+                            if f {
+                                print!(", ");
+                            } else {
+                                f = true;
+                            }
+                            STD_FUNC(
+                                "print".to_string(),
+                                vec![val.clone()],
+                                accept.clone(),
+                                reject.clone(),
+                                ExternalFunctionCallData {
+                                    encryption: data.encryption.clone(),
+                                    private_key: data.private_key,
+                                    public_key: data.public_key,
+                                },
+                            );
+                        }
+                        print!("]");
+                    }
                     _ => {}
                 }
 

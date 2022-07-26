@@ -51,6 +51,7 @@ pub enum Node {
     },
     Lvar {
         value: String,
+        index: Option<Box<Node>>,
     },
     Return {
         lhs: Box<Node>,
@@ -97,14 +98,14 @@ impl Node {
     }
 
     pub fn new_lvar_node(value: String) -> Box<Node> {
-        Box::new(Node::Lvar { value })
+        Box::new(Node::Lvar { value, index: None })
     }
 
     pub fn extract_string(&self) -> String {
         match self {
             Node::Text { value } => value.clone(),
             Node::Number { value } => value.to_string(),
-            Node::Lvar { value } => value.clone(),
+            Node::Lvar { value, .. } => value.clone(),
             _ => String::new(),
         }
     }

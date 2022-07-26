@@ -1,4 +1,4 @@
-#[server(ip = "172.25.5.189:8080")]
+#[server(ip = "localhost:8080")]
 fn encrypt_add(a: eep, b: eep) {
     println("a: " + a)
     println("b: " + b)
@@ -18,11 +18,17 @@ fn rec(a: num, b: num) {
 }
 
 fn main() {
+
+    let vec_test: Vec<num> = vec(0);
+    vec_test = push(vec_test, 2);
+    println(vec_test[0]);
+    println(vec_test[1]);
+
     print("Input a: ")
-    let a = to_u512(read_line())
+    let a: U512 = to_u512(read_line())
 
     print("Input b: ")
-    let b = to_u512(read_line())
+    let b: U512 = to_u512(read_line())
 
     let enc_a = encrypt(a)
     let enc_b = encrypt(b)

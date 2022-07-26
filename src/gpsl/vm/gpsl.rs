@@ -3,6 +3,7 @@ use crate::elliptic_curve::encryption::{EncryptedEllipticCurvePoint, Encryption}
 use crate::gpsl::external_function::{
     ExternalFuncReturn, ExternalFuncStatus, ExternalFunctionCallData,
 };
+use crate::gpsl::gpsl_type::GPSLType;
 use crate::gpsl::node::*;
 use crate::gpsl::permission::Permission;
 use crate::gpsl::source::Source;
@@ -174,7 +175,7 @@ impl GPSL {
                             let function_args = function.1.extract_function_args();
                             let mut args: HashMap<String, Variable> = HashMap::new();
                             for (i, arg_name) in function_args.0.iter().enumerate() {
-                                if function_args.1[i] == args_value[i].get_type() {
+                                if function_args.1[i].to_str() == args_value[i].get_type() {
                                     args.insert(arg_name.clone(), args_value[i].clone());
                                 } else {
                                     return Err(format!(
@@ -239,7 +240,7 @@ impl GPSL {
 
                             let mut args: HashMap<String, LocalVariable> = HashMap::new();
                             for (i, name) in args_name.iter().enumerate() {
-                                if args_type[i] == args_value[i].get_type() {
+                                if args_type[i].to_str() == args_value[i].get_type() {
                                     args.insert(
                                         name.clone(),
                                         LocalVariable {
@@ -321,9 +322,40 @@ impl GPSL {
 
                     if let Ok(Some(rhs)) = rhs {
                         match *(lhs.clone()) {
-                            Node::Lvar { value } => {
-                                self.get_local_var_mut(&value).unwrap().value = Some(rhs);
-                                self.get_local_var_mut(&value).unwrap().status.initialized = true;
+                            Node::Lvar { value, index } => {
+                                if let Some(index) = index {
+                                    let mut val =
+                                        self.get_local_var_mut(&value).unwrap().value.clone();
+                                    match val {
+                                        Some(Variable::Vec {
+                                            value: mut v,
+                                            gpsl_type,
+                                        }) => {
+                                            v[self
+                                                .evaluate(index)
+                                                .unwrap()
+                                                .unwrap()
+                                                .extract_number()
+                                                .unwrap()
+                                                as usize] = rhs;
+                                            self.get_local_var_mut(&value).unwrap().value =
+                                                Some(Variable::Vec {
+                                                    value: v,
+                                                    gpsl_type,
+                                                });
+                                        }
+                                        _ => {
+                                            return Err(format!(
+                                                "Variable {} is not a list",
+                                                value
+                                            ));
+                                        }
+                                    }
+                                } else {
+                                    self.get_local_var_mut(&value).unwrap().value = Some(rhs);
+                                    self.get_local_var_mut(&value).unwrap().status.initialized =
+                                        true;
+                                }
                             }
                             _ => {}
                         }
@@ -455,7 +487,26 @@ impl GPSL {
                     Err(String::from("LHS Variable is null."))
                 }
             }
-            Node::Lvar { value } => {
+            Node::Lvar { value, index } => {
+                if let Some(index) = index {
+                    let val = self.get_local_var_mut(&value).unwrap().clone();
+                    match val.value {
+                        Some(Variable::Vec { value, gpsl_type }) => {
+                            return Ok(Some(
+                                value[self
+                                    .evaluate(index)
+                                    .unwrap()
+                                    .unwrap()
+                                    .extract_number()
+                                    .unwrap() as usize]
+                                    .clone(),
+                            ));
+                        }
+                        _ => {
+                            return Err(format!("Variable {} is not a list", value));
+                        }
+                    }
+                }
                 return Ok(Some(
                     self.get_local_var(&value).unwrap().value.clone().unwrap(),
                 ));
@@ -633,7 +684,11 @@ impl GPSL {
                 if let Some(value) = value {
                     let value = self.evaluate(value);
                     if let Ok(Some(value)) = value.clone() {
-                        if value.get_type() == var_type.unwrap_or(value.get_type()) {
+                        if value.get_type()
+                            == var_type
+                                .unwrap_or(GPSLType::from_str(&value.get_type()).unwrap())
+                                .to_str()
+                        {
                             self.blocks.front_mut().unwrap().variables.insert(
                                 name.clone(),
                                 LocalVariable {
@@ -652,27 +707,14 @@ impl GPSL {
                         return Err(String::from("Unexpected error in DEFINE."));
                     }
                 } else {
-                    let value = match &*var_type.unwrap() {
-                        "num" => Variable::Number { value: 0 },
-                        "String" => Variable::Text {
-                            value: String::new(),
-                        },
-                        "eep" => Variable::PureEncrypted {
-                            value: EncryptedEllipticCurvePoint::default(),
-                        },
-                        "U512" => Variable::U512 {
-                            value: U512::default(),
-                        },
-                        _ => {
-                            panic!("Invalid variable type.");
-                        }
-                    };
-
+                    if !var_type.unwrap().is_correct() {
+                        return Err(String::from("Invalid type."));
+                    }
                     self.blocks.front_mut().unwrap().variables.insert(
                         name.clone(),
                         LocalVariable {
                             name,
-                            value: Some(value),
+                            value: None,
                             status: VariableStatus::default(),
                         },
                     );

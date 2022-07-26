@@ -272,6 +272,7 @@ impl Parser {
         type: IDENT (LT (type COMMA?)+ BT)? ;
     */
     pub fn gpsl_type(&mut self) -> Result<GPSLType, String> {
+        debug!("parsing type");
         let ident = self.tokenizer.current_token().clone();
         self.tokenizer.expect_kind(TokenKind::IDENT)?;
         if self
@@ -296,6 +297,8 @@ impl Parser {
                     {
                         continue;
                     } else {
+                        self.tokenizer
+                            .consume_kind_str(TokenKind::RESERVED, String::from(">"));
                         return Ok(GPSLType {
                             type_str: ident.str,
                             child: types,
@@ -530,6 +533,16 @@ impl Parser {
                     args: args,
                 }));
             }
+
+            if self.tokenizer.consume(String::from("[")) {
+                let index = self.stmt()?;
+                self.tokenizer.expect(String::from("]"))?;
+                return Ok(Box::new(Node::Lvar {
+                    value: node.clone(),
+                    index: Some(index),
+                }));
+            }
+
             return Ok(Node::new_lvar_node(node.clone()));
         }
 

@@ -35,7 +35,7 @@ relational: add (LE add | LT add | BE add | BT add)* ;
 add: mul (ADD mul | SUB mul | SUB_ASSIGNMENT mul | ADD_ASSIGNMENT mul)* ;
 mul: unary (MUL unary | DIV unary | DIV_ASSIGNMENT unary | MUL_ASSIGNMENT unary)* ;
 
-primary: LPAREN expr RPAREN | function_call | TEXT | NUM ;
+primary: LPAREN expr RPAREN | function_call | TEXT (LBRACKET stmt RBRACKET)? | NUM ;
 function_call: IDENT LPAREN (stmt COMMA?)* RPAREN ;
 
 unary: ADD primary
