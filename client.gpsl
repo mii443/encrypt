@@ -1,40 +1,27 @@
 #[server(ip = "localhost:8080")]
-fn encrypt_add(a: eep, b: eep) {
-    println("a: " + a)
-    println("b: " + b)
-    return a + b
-}
-
-fn add(a: num, b: num) {
-    return a + b;
-}
-
-fn rec(a: num, b: num) {
-    if b > 0 {
-        return rec(a + 2, b - 1);
-    } else {
-        return a;
+fn encrypt_add(a: Vec<eep>) {
+    let r: eep = a[0];
+    println("1人目: " + a[0]);
+    for (let i = 1; i < length(a); i += 1) {
+        println((i + 1) + "人目: " + a[i]);
+        r = r + a[i];
     }
+    return r;
 }
 
 fn main() {
+    let a: Vec<eep> = vec(encrypt(0));
+    print("人数を入力してください > ");
+    let n = to_num(read_line());
+    for (let i = 0; i < (n - 1); i += 1) {
+        a = push(a, encrypt(0));
+    }
+    println(n);
 
-    let vec_test: Vec<num> = vec(0);
-    vec_test = push(vec_test, 2);
-    println(vec_test[0]);
-    println(vec_test[1]);
+    for (let i = 0; i < n; i += 1) {
+        print("賛成なら1, 反対なら0を入力してください > ");
+        a[i] = encrypt(to_u512(read_line()));
+    }
 
-    print("Input a: ")
-    let a: U512 = to_u512(read_line())
-
-    print("Input b: ")
-    let b: U512 = to_u512(read_line())
-
-    let enc_a = encrypt(a)
-    let enc_b = encrypt(b)
-
-    let enc_res = encrypt_add(enc_a, enc_b)
-
-    println(decrypt(enc_res))
+    println("賛成者の合計は" + decrypt(encrypt_add(a)) + "です。");
 }
-

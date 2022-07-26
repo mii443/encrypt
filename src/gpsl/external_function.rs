@@ -65,7 +65,6 @@ pub const STD_FUNC: fn(
                     for arg in args {
                         value.push(arg);
                     }
-                    println!("vec push: {:?}", value.clone());
                     return ExternalFuncReturn {
                         status: ExternalFuncStatus::SUCCESS,
                         value: Some(Variable::Vec { value, gpsl_type }),
@@ -131,6 +130,18 @@ pub const STD_FUNC: fn(
                 value: Some(Variable::Number {
                     value: plain.as_u64() as i64,
                 }),
+            }
+        }
+        "to_num" => {
+            let num = match args[0].clone() {
+                Variable::Number { value } => value,
+                Variable::U512 { value } => value.as_u64() as i64,
+                Variable::Text { value } => value.as_str().parse::<i64>().unwrap(),
+                _ => panic!("to_num: first argument must be a number"),
+            };
+            ExternalFuncReturn {
+                status: ExternalFuncStatus::SUCCESS,
+                value: Some(Variable::Number { value: num }),
             }
         }
         "to_u512" => {

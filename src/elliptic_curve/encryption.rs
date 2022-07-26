@@ -43,7 +43,7 @@ impl Display for EncryptedEllipticCurvePoint {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.data {
             EllipticCurvePoint::Infinity => write!(f, "Infinity"),
-            EllipticCurvePoint::Point { x, y, .. } => write!(f, "{:x}{:x}", x.value, y.value),
+            EllipticCurvePoint::Point { x, y, .. } => write!(f, "{:x}", x.value + y.value),
         }
     }
 }
