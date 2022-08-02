@@ -1,4 +1,6 @@
-#[derive(Clone, Copy, Debug, PartialEq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum TokenKind {
     CONTROL,
     RETURN,
@@ -9,7 +11,7 @@ pub enum TokenKind {
     TEXT,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Token {
     pub kind: TokenKind,
     pub num: i64,

@@ -1,8 +1,10 @@
 use crate::gpsl::source::*;
 use crate::gpsl::token::*;
 use log::*;
+use serde::Deserialize;
+use serde::Serialize;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Tokenizer {
     pub tokens: Vec<Token>,
     pub cursor: usize,

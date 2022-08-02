@@ -37,6 +37,10 @@ pub enum EllipticCurvePoint {
 }
 
 impl EllipticCurvePoint {
+    pub fn from_str(s: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str(s)
+    }
+
     pub fn exp(&self, k: U512) -> Self {
         if k == U512::zero() {
             return Self::Infinity;

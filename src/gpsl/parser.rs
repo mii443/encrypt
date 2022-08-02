@@ -2,11 +2,13 @@ use crate::gpsl::node::*;
 use crate::gpsl::token::*;
 use crate::gpsl::tokenizer::*;
 use log::debug;
+use serde::Deserialize;
+use serde::Serialize;
 use std::collections::HashMap;
 
 use super::gpsl_type::GPSLType;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Parser {
     pub tokenizer: Tokenizer,
     pub local_vars: HashMap<String, usize>,

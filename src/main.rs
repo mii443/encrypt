@@ -3,6 +3,7 @@ mod elliptic_curve;
 mod gpsl;
 use common::finite_field::FiniteFieldElement;
 use elliptic_curve::elliptic_curve::EllipticCurve;
+use elliptic_curve::elliptic_curve::EllipticCurvePoint;
 use elliptic_curve::encryption::Encryption;
 use gpsl::external_function::ExternalFuncReturn;
 use gpsl::external_function::ExternalFuncStatus;
@@ -12,13 +13,99 @@ use gpsl::vm::gpsl::ServerFunctionCall;
 use gpsl::{external_function::STD_FUNC, source::*, tokenizer::*, vm::gpsl::*};
 use log::*;
 use primitive_types::U512;
+use serde::Deserialize;
+use serde::Serialize;
 use std::env;
+use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
+use std::io::Read;
 use std::io::Write;
 use std::net::{TcpListener, TcpStream};
+use std::path::Path;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::{collections::HashMap, fs};
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct ConfigFile {
+    pub private_key: Option<String>,
+    pub public_key: Option<String>,
+}
+
+impl ConfigFile {
+    pub fn from_config(config: Config) -> Self {
+        let private_key = {
+            if let Some(private_key) = config.private_key {
+                let s = private_key.to_string();
+                let encode = base64::encode(&s);
+                Some(encode)
+            } else {
+                None
+            }
+        };
+
+        let public_key = {
+            if let Some(public_key) = config.public_key {
+                let s = serde_json::to_string(&public_key).unwrap();
+                let encode = base64::encode(&s);
+                Some(encode)
+            } else {
+                None
+            }
+        };
+
+        Self {
+            private_key,
+            public_key,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct Config {
+    pub private_key: Option<U512>,
+    pub public_key: Option<EllipticCurvePoint>,
+}
+
+impl Config {
+    fn read_file(file: &str) -> String {
+        let mut file = fs::File::open(file).unwrap();
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).unwrap();
+        contents
+    }
+    pub fn from_file(file: &str) -> Self {
+        let file = Config::read_file(file);
+        let config: ConfigFile = toml::from_str(&file).unwrap();
+
+        let private_key = {
+            if let Some(private_key) = config.private_key {
+                let decoded = base64::decode(&private_key).unwrap();
+                let s = std::str::from_utf8(&decoded).unwrap();
+                Some(U512::from_str(s).unwrap())
+            } else {
+                None
+            }
+        };
+
+        let public_key = {
+            if let Some(public_key) = config.public_key {
+                let decoded = base64::decode(&public_key).unwrap();
+                let s = std::str::from_utf8(&decoded).unwrap();
+                Some(EllipticCurvePoint::from_str(s).unwrap())
+            } else {
+                None
+            }
+        };
+
+        Config {
+            private_key,
+            public_key,
+        }
+    }
+}
+
 /*
 [6139062701328441600,
 [258929920560, 23709360],
@@ -233,6 +320,9 @@ fn client(args: Args) {
     };
 
     let functions = parser.functions().unwrap();
+
+    println!("{}", serde_json::to_string(&functions).unwrap());
+
     let mut server_functions: HashMap<String, HashMap<String, Box<Node>>> = HashMap::new();
     for function in functions.clone() {
         match *function.clone().1 {
@@ -294,7 +384,23 @@ fn client(args: Args) {
     }
 
     let encryption = generate_encryption();
-    let private_key = Encryption::get_private_key();
+
+    let config = if Path::new("gpsl_conf.toml").exists() {
+        Config::from_file("gpsl_conf.toml")
+    } else {
+        let private_key = Encryption::get_private_key();
+        let config = Config {
+            private_key: Some(private_key),
+            public_key: Some(encryption.get_public_key(private_key)),
+        };
+
+        let mut file = File::create("gpsl_conf.toml").unwrap();
+        let config_file = ConfigFile::from_config(config.clone());
+        file.write_all(serde_json::to_string(&config_file).unwrap().as_bytes())
+            .unwrap();
+
+        config
+    };
 
     let mut gpsl = GPSL::new(
         source,
@@ -302,8 +408,8 @@ fn client(args: Args) {
         Some(server_functions),
         Some(servers),
         encryption.clone(),
-        Some(private_key),
-        Some(encryption.get_public_key(private_key)),
+        config.private_key,
+        config.public_key,
         vec![STD_FUNC],
     );
     let res = gpsl.run("main".to_string(), HashMap::new());
