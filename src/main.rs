@@ -112,28 +112,62 @@ impl Config {
 [[Mod(3308825380872319861, 6139062703770505681), Mod(4839630718792142583, 6139062703770505681)],
 [Mod(4767914906170010398, 6139062703770505681), Mod(2445476831433994309, 6139062703770505681)]]]
  */
-/*
+
 fn main() {
-    let p = U512::from_str_radix("6717051393902806321", 10).unwrap();
+    let p = U512::from_str_radix("1009", 10).unwrap();
 
-    let secp256_k1_a = FiniteFieldElement::new(U512::from(0u8), p);
-    let secp256_k1_b = FiniteFieldElement::new(U512::from_str_radix("1603830326921046894", 10).unwrap(), p);
+    let secp256_k1_a = FiniteFieldElement::new(U512::from(37u8), p);
+    let secp256_k1_b = FiniteFieldElement::new(U512::from_str_radix("0", 10).unwrap(), p);
 
-    let P = {
-        let x = FiniteFieldElement::new(U512::from_str_radix("3410381082791005532", 10).unwrap(), p);
-        let y = FiniteFieldElement::new(U512::from_str_radix("3959394867921462649", 10).unwrap(), p);
-        EllipticCurvePoint::Point { x, y, a: secp256_k1_a, b: secp256_k1_b }
+    let pp = {
+        let x = FiniteFieldElement::new(U512::from_str_radix("417", 10).unwrap(), p);
+        let y = FiniteFieldElement::new(U512::from_str_radix("952", 10).unwrap(), p);
+        EllipticCurvePoint::Point {
+            x,
+            y,
+            a: secp256_k1_a,
+            b: secp256_k1_b,
+        }
     };
-    let Q = {
-        let x = FiniteFieldElement::new(U512::from_str_radix("6030658041738565471", 10).unwrap(), p);
-        let y = FiniteFieldElement::new(U512::from_str_radix("34549622697239310", 10).unwrap(), p);
-        EllipticCurvePoint::Point { x, y, a: secp256_k1_a, b: secp256_k1_b }
+    let pd = {
+        let x = FiniteFieldElement::new(U512::from_str_radix("561", 10).unwrap(), p);
+        let y = FiniteFieldElement::new(U512::from_str_radix("153", 10).unwrap(), p);
+        EllipticCurvePoint::Point {
+            x,
+            y,
+            a: secp256_k1_a,
+            b: secp256_k1_b,
+        }
     };
-    let r = U512::from_str_radix("1135596179020030", 10).unwrap();
+    let r = U512::from_str_radix("7", 10).unwrap();
 
-    let f = EllipticCurvePoint::weil(P, Q, r);
+    let f = EllipticCurvePoint::weil(pp, pd, r);
 
-    println!("{}", f);
+    let s = U512::from(10u8);
+    let sd = U512::from(5u8);
+
+    let q = pp * s;
+    let qd = pd * sd;
+
+    let ra = U512::from_str_radix("1", 10).unwrap();
+    let rad = U512::from_str_radix("26", 10).unwrap();
+
+    let m = U512::from_str_radix("2", 10).unwrap();
+    let md = U512::from_str_radix("3", 10).unwrap();
+
+    let s1 = pp * m + q * ra;
+    let t1 = pp * ra;
+    let s2 = pd * md + qd * rad;
+    let t2 = pd * rad;
+
+    let a = EllipticCurvePoint::weil(s1, s2, r);
+    let b = EllipticCurvePoint::weil(s1, t2, r);
+    let c = EllipticCurvePoint::weil(t1, s2, r);
+    let d = EllipticCurvePoint::weil(t1, t2, r);
+
+    let dec = a * d.pow(s * sd) / b.pow(sd) / c.pow(s) * f;
+
+    println!("{} * {} = {}", m, md, search(f, dec));
 }
 
 pub fn search(base: FiniteFieldElement, target: FiniteFieldElement) -> U512 {
@@ -144,8 +178,12 @@ pub fn search(base: FiniteFieldElement, target: FiniteFieldElement) -> U512 {
         b = b * base;
         i += U512::one();
     }
-    i
-}*/
+    if i < U512::from(7u8) {
+        i
+    } else {
+        U512::zero()
+    }
+}
 
 use clap::Parser;
 
@@ -226,7 +264,7 @@ fn generate_encryption() -> Encryption {
     }
 }
 
-fn main() {
+fn o_main() {
     env::set_var("RUST_LOG", "info");
     env_logger::init();
     let args = Args::parse();
