@@ -5,6 +5,9 @@ use common::finite_field::FiniteFieldElement;
 use elliptic_curve::elliptic_curve::EllipticCurve;
 use elliptic_curve::elliptic_curve::EllipticCurvePoint;
 use elliptic_curve::encryption::Encryption;
+use flate2::read::ZlibDecoder;
+use flate2::write::ZlibEncoder;
+use flate2::Compression;
 use gpsl::external_function::ExternalFuncReturn;
 use gpsl::external_function::ExternalFuncStatus;
 use gpsl::node::Node;
@@ -17,6 +20,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::env;
 use std::fs::File;
+use std::io::prelude::*;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Read;
@@ -71,9 +75,12 @@ struct Config {
 impl Config {
     fn read_file(file: &str) -> String {
         let mut file = fs::File::open(file).unwrap();
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).unwrap();
-        contents
+        let mut contents = Vec::new();
+        file.read_to_end(&mut contents).unwrap();
+        let mut d = ZlibDecoder::new(&contents[..]);
+        let mut s = String::new();
+        d.read_to_string(&mut s).unwrap();
+        s
     }
     pub fn from_file(file: &str) -> Self {
         let file = Config::read_file(file);
@@ -83,7 +90,7 @@ impl Config {
             if let Some(private_key) = config.private_key {
                 let decoded = base64::decode(&private_key).unwrap();
                 let s = std::str::from_utf8(&decoded).unwrap();
-                Some(U512::from_str(s).unwrap())
+                Some(U512::from_str_radix(s, 10).unwrap())
             } else {
                 None
             }
@@ -93,7 +100,8 @@ impl Config {
             if let Some(public_key) = config.public_key {
                 let decoded = base64::decode(&public_key).unwrap();
                 let s = std::str::from_utf8(&decoded).unwrap();
-                Some(EllipticCurvePoint::from_str(s).unwrap())
+                let r = EllipticCurvePoint::from_str(s).unwrap();
+                Some(r)
             } else {
                 None
             }
@@ -113,7 +121,7 @@ impl Config {
 [Mod(4767914906170010398, 6139062703770505681), Mod(2445476831433994309, 6139062703770505681)]]]
  */
 
-fn main() {
+fn o_main() {
     let p = U512::from_str_radix("1009", 10).unwrap();
 
     let secp256_k1_a = FiniteFieldElement::new(U512::from(37u8), p);
@@ -139,6 +147,7 @@ fn main() {
             b: secp256_k1_b,
         }
     };
+
     let r = U512::from_str_radix("7", 10).unwrap();
 
     let f = EllipticCurvePoint::weil(pp, pd, r);
@@ -149,11 +158,11 @@ fn main() {
     let q = pp * s;
     let qd = pd * sd;
 
-    let ra = U512::from_str_radix("1", 10).unwrap();
+    let ra = U512::from_str_radix("20", 10).unwrap();
     let rad = U512::from_str_radix("26", 10).unwrap();
 
     let m = U512::from_str_radix("2", 10).unwrap();
-    let md = U512::from_str_radix("3", 10).unwrap();
+    let md = U512::from_str_radix("2", 10).unwrap();
 
     let s1 = pp * m + q * ra;
     let t1 = pp * ra;
@@ -264,7 +273,7 @@ fn generate_encryption() -> Encryption {
     }
 }
 
-fn o_main() {
+fn main() {
     env::set_var("RUST_LOG", "info");
     env_logger::init();
     let args = Args::parse();
@@ -434,8 +443,10 @@ fn client(args: Args) {
 
         let mut file = File::create("gpsl_conf.toml").unwrap();
         let config_file = ConfigFile::from_config(config.clone());
-        file.write_all(serde_json::to_string(&config_file).unwrap().as_bytes())
+        let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
+        e.write_all(toml::to_string(&config_file).unwrap().as_bytes())
             .unwrap();
+        file.write_all(&e.finish().unwrap()).unwrap();
 
         config
     };

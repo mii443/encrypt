@@ -1,0 +1,15 @@
+fn main() {
+    let a = encrypt(16)
+    println("a: " + decrypt(a))
+    let b = encrypt(60)
+    println("b: " + b)
+    let c = encrypt(48)
+    println("c: " + c)
+    let d = encrypt(2)
+    println("d: " + d)
+    let e = encrypt(24)
+    println("e: " + e)
+    let r = a + b + c + d + e
+    println("r: " + decrypt(r));
+    println(decrypt(r) - 15)
+}
