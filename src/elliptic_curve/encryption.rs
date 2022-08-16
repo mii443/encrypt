@@ -1,6 +1,6 @@
 use std::{
     fmt::Display,
-    ops::{Add, Sub},
+    ops::{Add, Mul, Sub},
     sync::mpsc,
     thread,
 };
@@ -67,6 +67,29 @@ impl Sub for EncryptedEllipticCurvePoint {
             data: self.data + (-rhs.data),
             rp: self.rp + (-rhs.rp),
         }
+    }
+}
+
+impl Mul<U512> for EncryptedEllipticCurvePoint {
+    type Output = Self;
+
+    fn mul(self, rhs: U512) -> Self::Output {
+        let mut tmp = self;
+        let mut point: Option<EncryptedEllipticCurvePoint> = None;
+        let mut n = rhs;
+        while n > U512::zero() {
+            if n & U512::one() == U512::one() {
+                if let Some(s_point) = point {
+                    point = Some(s_point + tmp);
+                } else {
+                    point = Some(tmp);
+                }
+            }
+
+            n = n >> 1;
+            tmp = tmp + tmp;
+        }
+        point.unwrap()
     }
 }
 

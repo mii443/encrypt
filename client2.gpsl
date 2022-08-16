@@ -9,7 +9,8 @@ fn main() {
     println("d: " + d)
     let e = encrypt(24)
     println("e: " + e)
-    let r = a + b + c + d + e
+    let f = encrypt(15)
+    let r = a + b + c + d + e - f
     println("r: " + decrypt(r));
-    println(decrypt(r) - 15)
+    println(decrypt(r * 2))
 }

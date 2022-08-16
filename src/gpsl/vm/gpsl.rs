@@ -423,21 +423,48 @@ impl GPSL {
                                 },
                                 Err(err) => Err(err),
                             },
-                            NodeKind::MUL => match GPSL::extract_number(lhs) {
+                            NodeKind::MUL => match lhs.clone() {
+                                Variable::Number { value: lhs } => match rhs {
+                                    Variable::Number { value: rhs } => {
+                                        Ok(Some(Variable::Number { value: lhs * rhs }))
+                                    }
+                                    _ => Err("Cannot multiply non-number to number.".to_string()),
+                                },
+                                Variable::PureEncrypted { value: lhs } => match rhs {
+                                    Variable::Number { value: rhs } => {
+                                        Ok(Some(Variable::PureEncrypted {
+                                            value: lhs * U512::from(rhs),
+                                        }))
+                                    }
+                                    Variable::U512 { value: rhs } => {
+                                        Ok(Some(Variable::PureEncrypted { value: lhs * rhs }))
+                                    }
+                                    _ => Err("Cannot multiply non-number to ppe.".to_string()),
+                                },
+                                _ => Err("Cannot multiply non-number.".to_string()),
+                            },
+                            /*match GPSL::extract_number(lhs) {
                                 Ok(lhs) => match GPSL::extract_number(rhs) {
                                     Ok(rhs) => Ok(Some(Variable::Number { value: lhs * rhs })),
                                     Err(err) => Err(err),
                                 },
                                 Err(err) => Err(err),
-                            },
-                            NodeKind::SUB => match GPSL::extract_number(lhs) {
-                                Ok(lhs) => match GPSL::extract_number(rhs) {
-                                    Ok(rhs) => Ok(Some(Variable::Number { value: lhs - rhs })),
-                                    Err(err) => Err(err),
+                            },*/
+                            NodeKind::SUB => match lhs.clone() {
+                                Variable::Number { value: lhs } => match rhs {
+                                    Variable::Number { value: rhs } => {
+                                        Ok(Some(Variable::Number { value: lhs - rhs }))
+                                    }
+                                    _ => Err("Cannot subtract non-number from number.".to_string()),
                                 },
-                                Err(err) => Err(err),
+                                Variable::PureEncrypted { value: lhs } => match rhs {
+                                    Variable::PureEncrypted { value: rhs } => {
+                                        Ok(Some(Variable::PureEncrypted { value: lhs - rhs }))
+                                    }
+                                    _ => Err("Cannot subtract non-ppe from ppe.".to_string()),
+                                },
+                                _ => Err("Cannot subtract non-number.".to_string()),
                             },
-
                             NodeKind::EQ => {
                                 if lhs == rhs {
                                     Ok(Some(Variable::Number { value: 1 }))
