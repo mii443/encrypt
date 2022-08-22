@@ -372,42 +372,53 @@ fn client(args: Args) {
 
     let mut server_functions: HashMap<String, HashMap<String, Box<Node>>> = HashMap::new();
     for function in functions.clone() {
-        match *function.clone().1 {
-            Node::Function { attribute, .. } => match *(attribute.unwrap()) {
-                Node::Attribute { name, args } => {
-                    if name == String::from("server") {
-                        let ip = {
-                            let mut t_ip = None;
-                            for arg in args {
-                                let ip = match *arg {
-                                    Node::Operator { kind, lhs, rhs } => {
-                                        if kind == NodeKind::ASSIGN {
-                                            if lhs.extract_string() == String::from("ip") {
-                                                Some(rhs.extract_string())
-                                            } else {
-                                                None
-                                            }
-                                        } else {
-                                            None
-                                        }
-                                    }
-                                    _ => None,
-                                };
-                                if ip.is_some() {
-                                    t_ip = ip;
-                                    break;
-                                }
-                            }
-                            t_ip.unwrap()
-                        };
+        let function_node = function.clone();
+        let function = function.clone().1.expect_function();
+        if let Err(_) = function {
+            continue;
+        }
+        let function = function.unwrap();
+        if let None = function.4 {
+            continue;
+        }
 
-                        let t_functions = server_functions.entry(ip).or_insert(HashMap::new());
-                        t_functions.insert(function.clone().0.clone(), function.clone().1.clone());
+        let attribute = function.4.unwrap().expect_attribute();
+        if let Err(_) = attribute {
+            continue;
+        }
+
+        let attribute = attribute.unwrap();
+        let name = attribute.0;
+        let args = attribute.1;
+
+        if name == String::from("server") {
+            let ip = {
+                let mut t_ip = None;
+                for arg in args {
+                    let ip = match *arg {
+                        Node::Operator { kind, lhs, rhs } => {
+                            if kind == NodeKind::ASSIGN {
+                                if lhs.extract_string() == String::from("ip") {
+                                    Some(rhs.extract_string())
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    };
+                    if ip.is_some() {
+                        t_ip = ip;
+                        break;
                     }
                 }
-                _ => {}
-            },
-            _ => {}
+                t_ip.unwrap()
+            };
+
+            let t_functions = server_functions.entry(ip).or_insert(HashMap::new());
+            t_functions.insert(function_node.clone().0.clone(), function_node.1);
         }
     }
 
