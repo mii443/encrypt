@@ -14,4 +14,7 @@ pub struct Args {
 
     #[clap(short, long, takes_value = false)]
     pub debug: bool,
+
+    #[clap(short, long, takes_value = false)]
+    pub compile: bool,
 }

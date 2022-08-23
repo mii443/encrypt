@@ -8,7 +8,6 @@ use crate::args::Args;
 use crate::elliptic_curve::encryption::Encryption;
 use crate::gpsl::external_function::{ExternalFuncReturn, ExternalFuncStatus, STD_FUNC};
 use crate::gpsl::node::Node;
-use crate::gpsl::source::Source;
 use crate::gpsl::vm::gpsl::{ServerFunctionCall, GPSL};
 
 fn listen_tcp_server(port: u16) -> TcpStream {
@@ -41,7 +40,6 @@ pub fn start_server(args: Args) {
         debug!("Received: {:?}", functions);
 
         let mut gpsl = GPSL::new(
-            Source::new(String::default()),
             Some(functions),
             Some(HashMap::new()),
             Some(HashMap::new()),

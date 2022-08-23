@@ -6,7 +6,6 @@ use crate::gpsl::external_function::{
 use crate::gpsl::gpsl_type::GPSLType;
 use crate::gpsl::node::*;
 use crate::gpsl::permission::Permission;
-use crate::gpsl::source::Source;
 use crate::gpsl::variable::*;
 use log::*;
 use primitive_types::U512;
@@ -34,7 +33,6 @@ pub struct GPSL {
     pub private_key: Option<U512>,
     pub public_key: Option<EllipticCurvePoint>,
     pub global_variables: Vec<Variable>,
-    pub source: Source,
     pub blocks: VecDeque<Block>,
     pub external_func: Vec<
         fn(
@@ -73,7 +71,6 @@ impl VariableStatus {
 
 impl GPSL {
     pub fn new(
-        source: Source,
         functions: Option<HashMap<String, Box<Node>>>,
         server_functions: Option<HashMap<String, HashMap<String, Box<Node>>>>,
         servers: Option<HashMap<String, Arc<Mutex<TcpStream>>>>,
@@ -91,7 +88,6 @@ impl GPSL {
         >,
     ) -> GPSL {
         GPSL {
-            source,
             functions,
             server_functions,
             servers,
