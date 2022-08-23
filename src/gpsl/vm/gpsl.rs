@@ -629,6 +629,16 @@ impl GPSL {
                 update,
                 stmt,
             } => {
+                let accept = self.blocks.front().unwrap().accept.clone();
+                let reject = self.blocks.front().unwrap().reject.clone();
+
+                self.blocks.push_front(Block {
+                    accept,
+                    reject,
+                    variables: HashMap::new(),
+                    is_split: false,
+                });
+
                 match init {
                     Some(init) => {
                         self.evaluate(init)?;
@@ -670,6 +680,12 @@ impl GPSL {
                         }
                         None => Variable::Number { value: 1 },
                     };
+                }
+
+                let p = self.blocks.pop_front();
+
+                if let Some(p) = p {
+                    debug!("Free: {}", p.variables.len());
                 }
 
                 return Ok(None);
