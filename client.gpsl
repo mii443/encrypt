@@ -1,27 +1,51 @@
 #[server(ip = "localhost:8080")]
-fn encrypt_add(a: Vec<eep>) {
+fn encrypt_add(a: Vec<eep>) $(accept[StdOut]) {
+    println("");
+    println("集計開始");
     let r: eep = a[0];
     println("1人目: " + a[0]);
-    for (let i = 1; i < length(a); i += 1) {
+    let a_length = length(a);
+    for (let i = 1; i < a_length; i += 1) {
         println((i + 1) + "人目: " + a[i]);
         r = r + a[i];
     }
+    println("");
     return r;
 }
 
 fn main() {
-    let a: Vec<eep> = vec(encrypt(0));
+    let a: Vec<U512> = vec(to_u512(0));
+    let b: Vec<eep> = vec(encrypt(0));
     print("人数を入力してください > ");
     let n = to_num(read_line());
     for (let i = 0; i < (n - 1); i += 1) {
-        a = push(a, encrypt(0));
+        a = push(a, to_u512(0));
+        b = push(b, encrypt(0));
     }
-    println(n);
+
+    println("賛成なら1, 反対なら0を入力してください");
+    for (let i = 0; i < n; i += 1) {
+        print((i + 1) + "人目 > ");
+        let in = to_u512(read_line());
+        if (in == to_u512(1)) || (in == to_u512(0))
+            a[i] = in;
+        else {
+            println("1か0を入力してください");
+            i -= 1;
+        }
+    }
+
+    println("暗号化してサーバーへ送信します...");
 
     for (let i = 0; i < n; i += 1) {
-        print("賛成なら1, 反対なら0を入力してください > ");
-        a[i] = encrypt(to_u512(read_line()));
+        b[i] = encrypt(a[i]);
     }
 
-    println("賛成者の合計は" + decrypt(encrypt_add(a)) + "です。");
+    let r = encrypt_add(b);
+    
+    println("復号します...");
+    let result = decrypt(r);
+    println("賛成者の合計は" + result + "です。");
+    write("result.txt", result);
 }
+
