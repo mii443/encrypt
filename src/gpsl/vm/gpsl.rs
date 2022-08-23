@@ -717,7 +717,11 @@ impl GPSL {
                     }
                 }
 
-                self.blocks.pop_front();
+                let p = self.blocks.pop_front();
+
+                if let Some(p) = p {
+                    debug!("Free: {}", p.variables.len());
+                }
 
                 return Ok(None);
             }
