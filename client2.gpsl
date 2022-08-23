@@ -1,6 +1,6 @@
 fn main() {
     let a = encrypt(16)
-    println("a: " + decrypt(a))
+    println("a: " + a)
     let b = encrypt(60)
     println("b: " + b)
     let c = encrypt(48)
@@ -11,6 +11,5 @@ fn main() {
     println("e: " + e)
     let f = encrypt(15)
     let r = a + b + c + d + e - f
-    println("r: " + decrypt(r));
-    println(decrypt(r * 2))
+    println("(a + b + c + d + e - f) * 2 = " + decrypt(r * 2))
 }
