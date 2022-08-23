@@ -38,6 +38,18 @@ pub const STD_FUNC: fn(
 ) -> ExternalFuncReturn = |name, args, accept, reject, data| {
     let name = name.as_str();
     match name {
+        "write" => {
+            let file_name = args[0].clone();
+            let content = args[1].clone();
+            let mut file =
+                std::fs::File::create(file_name.extract_text().unwrap().as_str()).unwrap();
+            file.write_all(content.extract_text().unwrap().as_bytes())
+                .unwrap();
+            ExternalFuncReturn {
+                status: ExternalFuncStatus::SUCCESS,
+                value: None,
+            }
+        }
         "length" => {
             let vec = args[0].clone();
             match vec {

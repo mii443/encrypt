@@ -54,4 +54,22 @@ impl Variable {
             _ => None,
         }
     }
+
+    pub fn extract_text(&self) -> Option<String> {
+        match self {
+            Variable::Text { value } => Some(value.clone()),
+            Variable::Number { value } => Some(value.to_string()),
+            Variable::PureEncrypted { value } => Some(value.to_string()),
+            Variable::PairedEncrypted { value } => Some(value.to_string()),
+            Variable::U512 { value } => Some(value.to_string()),
+            Variable::Vec { value, .. } => {
+                let mut result = String::new();
+                for v in value {
+                    result.push_str(&v.extract_text().unwrap());
+                }
+                Some(result)
+            }
+            _ => None,
+        }
+    }
 }
