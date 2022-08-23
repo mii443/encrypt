@@ -39,6 +39,12 @@ pub const STD_FUNC: fn(
     let name = name.as_str();
     match name {
         "write" => {
+            if !accept.contains(&Permission::FileWrite) || reject.contains(&Permission::FileWrite) {
+                return ExternalFuncReturn {
+                    status: ExternalFuncStatus::REJECTED,
+                    value: None,
+                };
+            }
             let file_name = args[0].clone();
             let content = args[1].clone();
             let mut file =
@@ -190,7 +196,7 @@ pub const STD_FUNC: fn(
             }
         }
         "read_line" => {
-            if accept.contains(&Permission::StdIo) && !reject.contains(&Permission::StdIo) {
+            if accept.contains(&Permission::StdIn) && !reject.contains(&Permission::StdIn) {
                 let mut buffer = String::default();
                 std::io::stdin().read_line(&mut buffer).unwrap();
                 return ExternalFuncReturn {
@@ -207,7 +213,7 @@ pub const STD_FUNC: fn(
             }
         }
         "println" => {
-            if accept.contains(&Permission::StdIo) && !reject.contains(&Permission::StdIo) {
+            if accept.contains(&Permission::StdOut) && !reject.contains(&Permission::StdOut) {
                 match &args[0] {
                     Variable::Text { value } => println!("{}", value),
                     Variable::Number { value } => println!("{}", value),
@@ -245,7 +251,7 @@ pub const STD_FUNC: fn(
             }
         }
         "print" => {
-            if accept.contains(&Permission::StdIo) && !reject.contains(&Permission::StdIo) {
+            if accept.contains(&Permission::StdOut) && !reject.contains(&Permission::StdOut) {
                 match &args[0] {
                     Variable::Text { value } => print!("{}", value),
                     Variable::Number { value } => print!("{}", value),

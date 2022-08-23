@@ -814,7 +814,12 @@ impl GPSL {
         }
 
         self.blocks.push_front(Block {
-            accept: vec![Permission::Administrator, Permission::StdIo],
+            accept: vec![
+                Permission::Administrator,
+                Permission::StdIn,
+                Permission::StdOut,
+                Permission::FileWrite,
+            ],
             reject: vec![],
             variables: local_variables,
             is_split: true,
