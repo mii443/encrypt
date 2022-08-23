@@ -94,6 +94,52 @@ impl Mul<U512> for EncryptedEllipticCurvePoint {
 }
 
 impl Encryption {
+    pub fn secp256k1() -> Self {
+        let p = U512::from_str_radix(
+            "115792089237316195423570985008687907853269984665640564039457584007908834671663",
+            10,
+        )
+        .unwrap();
+
+        let secp256_k1_a = FiniteFieldElement::new(U512::from(0u8), p);
+        let secp256_k1_b = FiniteFieldElement::new(U512::from(7u8), p);
+        let secp256_k1_base_x = FiniteFieldElement::new(
+            U512::from_str_radix(
+                "55066263022277343669578718895168534326250603453777594175500187360389116729240",
+                10,
+            )
+            .unwrap(),
+            p,
+        );
+        let secp256_k1_base_y = FiniteFieldElement::new(
+            U512::from_str_radix(
+                "32670510020758816978083085130507043184471273380659243275938904335757337482424",
+                10,
+            )
+            .unwrap(),
+            p,
+        );
+        let secp256_k1_order = FiniteFieldElement::new(
+            U512::from_str_radix(
+                "115792089237316195423570985008687907852837564279074904382605163141518161494337",
+                10,
+            )
+            .unwrap(),
+            p,
+        );
+        let ec = EllipticCurve {
+            a: secp256_k1_a,
+            b: secp256_k1_b,
+        };
+
+        Self {
+            ellictic_curve: ec,
+            base_point: ec.point(secp256_k1_base_x, secp256_k1_base_y),
+            order: secp256_k1_order,
+            plain_mapping: vec![],
+        }
+    }
+
     pub fn ec_point_to_plain(&self, point: EllipticCurvePoint) -> U512 {
         match point {
             EllipticCurvePoint::Infinity => return U512::from(0u8),

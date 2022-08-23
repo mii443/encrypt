@@ -1,13 +1,10 @@
 mod common;
+mod config;
 mod elliptic_curve;
 mod gpsl;
 use common::finite_field::FiniteFieldElement;
-use elliptic_curve::elliptic_curve::EllipticCurve;
 use elliptic_curve::elliptic_curve::EllipticCurvePoint;
 use elliptic_curve::encryption::Encryption;
-use flate2::read::ZlibDecoder;
-use flate2::write::ZlibEncoder;
-use flate2::Compression;
 use gpsl::external_function::ExternalFuncReturn;
 use gpsl::external_function::ExternalFuncStatus;
 use gpsl::node::Node;
@@ -16,103 +13,13 @@ use gpsl::vm::gpsl::ServerFunctionCall;
 use gpsl::{external_function::STD_FUNC, source::*, tokenizer::*, vm::gpsl::*};
 use log::*;
 use primitive_types::U512;
-use serde::Deserialize;
-use serde::Serialize;
 use std::env;
-use std::fs::File;
-use std::io::prelude::*;
 use std::io::BufRead;
 use std::io::BufReader;
-use std::io::Read;
 use std::io::Write;
 use std::net::{TcpListener, TcpStream};
-use std::path::Path;
-use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::{collections::HashMap, fs};
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct ConfigFile {
-    pub private_key: Option<String>,
-    pub public_key: Option<String>,
-}
-
-impl ConfigFile {
-    pub fn from_config(config: Config) -> Self {
-        let private_key = {
-            if let Some(private_key) = config.private_key {
-                let s = private_key.to_string();
-                let encode = base64::encode(&s);
-                Some(encode)
-            } else {
-                None
-            }
-        };
-
-        let public_key = {
-            if let Some(public_key) = config.public_key {
-                let s = serde_json::to_string(&public_key).unwrap();
-                let encode = base64::encode(&s);
-                Some(encode)
-            } else {
-                None
-            }
-        };
-
-        Self {
-            private_key,
-            public_key,
-        }
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct Config {
-    pub private_key: Option<U512>,
-    pub public_key: Option<EllipticCurvePoint>,
-}
-
-impl Config {
-    fn read_file(file: &str) -> String {
-        let mut file = fs::File::open(file).unwrap();
-        let mut contents = Vec::new();
-        file.read_to_end(&mut contents).unwrap();
-        let mut d = ZlibDecoder::new(&contents[..]);
-        let mut s = String::new();
-        d.read_to_string(&mut s).unwrap();
-        s
-    }
-    pub fn from_file(file: &str) -> Self {
-        let file = Config::read_file(file);
-        let config: ConfigFile = toml::from_str(&file).unwrap();
-
-        let private_key = {
-            if let Some(private_key) = config.private_key {
-                let decoded = base64::decode(&private_key).unwrap();
-                let s = std::str::from_utf8(&decoded).unwrap();
-                Some(U512::from_str_radix(s, 10).unwrap())
-            } else {
-                None
-            }
-        };
-
-        let public_key = {
-            if let Some(public_key) = config.public_key {
-                let decoded = base64::decode(&public_key).unwrap();
-                let s = std::str::from_utf8(&decoded).unwrap();
-                let r = EllipticCurvePoint::from_str(s).unwrap();
-                Some(r)
-            } else {
-                None
-            }
-        };
-
-        Config {
-            private_key,
-            public_key,
-        }
-    }
-}
 
 /*
 [6139062701328441600,
@@ -196,6 +103,8 @@ pub fn search(base: FiniteFieldElement, target: FiniteFieldElement) -> U512 {
 
 use clap::Parser;
 
+use crate::config::Config;
+
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
@@ -225,52 +134,6 @@ fn listen_tcp_server(port: u16) -> TcpStream {
         }
     }
     panic!("Cannot connect to client");
-}
-
-fn generate_encryption() -> Encryption {
-    let p = U512::from_str_radix(
-        "115792089237316195423570985008687907853269984665640564039457584007908834671663",
-        10,
-    )
-    .unwrap();
-
-    let secp256_k1_a = FiniteFieldElement::new(U512::from(0u8), p);
-    let secp256_k1_b = FiniteFieldElement::new(U512::from(7u8), p);
-    let secp256_k1_base_x = FiniteFieldElement::new(
-        U512::from_str_radix(
-            "55066263022277343669578718895168534326250603453777594175500187360389116729240",
-            10,
-        )
-        .unwrap(),
-        p,
-    );
-    let secp256_k1_base_y = FiniteFieldElement::new(
-        U512::from_str_radix(
-            "32670510020758816978083085130507043184471273380659243275938904335757337482424",
-            10,
-        )
-        .unwrap(),
-        p,
-    );
-    let secp256_k1_order = FiniteFieldElement::new(
-        U512::from_str_radix(
-            "115792089237316195423570985008687907852837564279074904382605163141518161494337",
-            10,
-        )
-        .unwrap(),
-        p,
-    );
-    let ec = EllipticCurve {
-        a: secp256_k1_a,
-        b: secp256_k1_b,
-    };
-
-    Encryption {
-        ellictic_curve: ec,
-        base_point: ec.point(secp256_k1_base_x, secp256_k1_base_y),
-        order: secp256_k1_order,
-        plain_mapping: vec![],
-    }
 }
 
 fn main() {
@@ -310,7 +173,7 @@ fn server(args: Args) {
             Some(functions),
             Some(HashMap::new()),
             Some(HashMap::new()),
-            generate_encryption(),
+            Encryption::secp256k1(),
             None,
             None,
             vec![STD_FUNC],
@@ -319,13 +182,10 @@ fn server(args: Args) {
         stream.write_fmt(format_args!("received\n")).unwrap();
 
         loop {
-            debug!("Receiving function call...");
             buf = String::default();
             if let Err(_) = BufReader::new(stream.try_clone().unwrap()).read_line(&mut buf) {
                 break;
             }
-            debug!("Received");
-            debug!("{}", buf);
 
             let function_call: ServerFunctionCall =
                 if let Ok(function_call) = serde_json::from_str(&buf) {
@@ -334,15 +194,12 @@ fn server(args: Args) {
                     break;
                 };
 
-            trace!("Running function: {}", function_call.name);
-
             let result = gpsl.run(function_call.name, function_call.args);
             let external_function_return = ExternalFuncReturn {
                 status: ExternalFuncStatus::SUCCESS,
                 value: Some(result.unwrap()),
             };
 
-            debug!("Sending result...");
             if let Err(_) = stream.write_fmt(format_args!(
                 "{}\n",
                 serde_json::to_string(&external_function_return).unwrap()
@@ -441,26 +298,9 @@ fn client(args: Args) {
         servers.insert(ip, Arc::new(Mutex::new(stream)));
     }
 
-    let encryption = generate_encryption();
+    let encryption = Encryption::secp256k1();
 
-    let config = if Path::new("gpsl_conf.toml").exists() {
-        Config::from_file("gpsl_conf.toml")
-    } else {
-        let private_key = Encryption::get_private_key();
-        let config = Config {
-            private_key: Some(private_key),
-            public_key: Some(encryption.get_public_key(private_key)),
-        };
-
-        let mut file = File::create("gpsl_conf.toml").unwrap();
-        let config_file = ConfigFile::from_config(config.clone());
-        let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
-        e.write_all(toml::to_string(&config_file).unwrap().as_bytes())
-            .unwrap();
-        file.write_all(&e.finish().unwrap()).unwrap();
-
-        config
-    };
+    let config = Config::read_or_create();
 
     let mut gpsl = GPSL::new(
         source,
