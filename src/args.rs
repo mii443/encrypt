@@ -11,4 +11,7 @@ pub struct Args {
 
     #[clap(name = "FILE", value_hint = ValueHint::AnyPath)]
     pub file: Option<PathBuf>,
+
+    #[clap(short, long, takes_value = false)]
+    pub debug: bool,
 }
