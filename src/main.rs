@@ -16,15 +16,9 @@ fn main() {
     env_logger::init();
     let args = Args::parse();
 
-    match &*args.mode {
-        "server" => {
-            start_server(args);
-        }
-        "client" => {
-            start_client(args);
-        }
-        _ => {
-            println!("Unknown mode");
-        }
+    if let Some(_) = args.port {
+        start_server(args);
+    } else {
+        start_client(args);
     }
 }
