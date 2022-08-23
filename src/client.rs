@@ -34,8 +34,6 @@ pub fn start_client(args: Args) {
 
     let functions = parser.functions().unwrap();
 
-    println!("{}", serde_json::to_string(&functions).unwrap());
-
     let mut server_functions: HashMap<String, HashMap<String, Box<Node>>> = HashMap::new();
     for function in functions.clone() {
         let function_node = function.clone();
