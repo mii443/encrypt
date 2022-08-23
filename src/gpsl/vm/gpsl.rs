@@ -465,6 +465,24 @@ impl GPSL {
                                 },
                                 _ => Err("Cannot subtract non-number.".to_string()),
                             },
+                            NodeKind::CONJ => {
+                                if lhs.extract_number() == Some(1)
+                                    && rhs.extract_number() == Some(1)
+                                {
+                                    Ok(Some(Variable::Number { value: 1 }))
+                                } else {
+                                    Ok(Some(Variable::Number { value: 0 }))
+                                }
+                            }
+                            NodeKind::OR => {
+                                if lhs.extract_number() == Some(1)
+                                    || rhs.extract_number() == Some(1)
+                                {
+                                    Ok(Some(Variable::Number { value: 1 }))
+                                } else {
+                                    Ok(Some(Variable::Number { value: 0 }))
+                                }
+                            }
                             NodeKind::EQ => {
                                 if lhs == rhs {
                                     Ok(Some(Variable::Number { value: 1 }))

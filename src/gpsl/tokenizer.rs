@@ -132,6 +132,7 @@ impl Tokenizer {
             String::from(")"),
             String::from("["),
             String::from("]"),
+            String::from("||"),
             String::from("=="),
             String::from("!="),
             String::from(">="),

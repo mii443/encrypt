@@ -30,7 +30,7 @@ permission: DOLLER LPAREN ( IDENT LBRACKET ( IDENT COMMA? )* RBRACKET COMMA? )* 
 
 expr: assign ;
 assign: equality (EQ assign)? ;
-equality: relational (EQEQ relational | NE relational | CONJ)* ;
+equality: relational (EQEQ relational | NE relational | OR relational | CONJ relational)* ;
 relational: add (LE add | LT add | BE add | BT add)* ;
 add: mul (ADD mul | SUB mul | SUB_ASSIGNMENT mul | ADD_ASSIGNMENT mul)* ;
 mul: unary (MUL unary | DIV unary | DIV_ASSIGNMENT unary | MUL_ASSIGNMENT unary)* ;

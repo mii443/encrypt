@@ -426,6 +426,10 @@ impl Parser {
                 node = Node::new_node(NodeKind::EQ, node, self.relational()?);
             } else if self.tokenizer.consume(String::from("!=")) {
                 node = Node::new_node(NodeKind::NE, node, self.relational()?);
+            } else if self.tokenizer.consume(String::from("&&")) {
+                node = Node::new_node(NodeKind::CONJ, node, self.relational()?);
+            } else if self.tokenizer.consume(String::from("||")) {
+                node = Node::new_node(NodeKind::OR, node, self.relational()?);
             } else {
                 return Ok(node);
             }

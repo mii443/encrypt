@@ -9,10 +9,12 @@ pub enum NodeKind {
     SUB,
     MUL,
     DIV,
-    EQ, // ==
-    NE, // !=
-    LT, // <
-    LE, // <=
+    CONJ, // &&
+    OR,   // ||
+    EQ,   // ==
+    NE,   // !=
+    LT,   // <
+    LE,   // <=
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
