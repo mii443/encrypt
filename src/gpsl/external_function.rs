@@ -112,7 +112,6 @@ pub const STD_FUNC: fn(
             };
             let ec = encryption.plain_to_ec_point(plain);
             let eep = encryption.encrypt(ec, data.public_key.unwrap(), None);
-            println!("{}", ec);
             ExternalFuncReturn {
                 status: ExternalFuncStatus::SUCCESS,
                 value: Some(Variable::PureEncrypted { value: eep }),
@@ -125,7 +124,6 @@ pub const STD_FUNC: fn(
                 _ => panic!("decrypt: first argument must be a pure encrypted point"),
             };
             let plain = Encryption::decrypt(eep, data.private_key.unwrap());
-            println!("{}", plain);
             let plain = encryption.ec_point_to_plain(plain);
             ExternalFuncReturn {
                 status: ExternalFuncStatus::SUCCESS,
