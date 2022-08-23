@@ -61,20 +61,15 @@ pub fn start_client(args: Args) {
             let ip = {
                 let mut t_ip = None;
                 for arg in args {
-                    let ip = match *arg {
-                        Node::Operator { kind, lhs, rhs } => {
-                            if kind == NodeKind::ASSIGN {
-                                if lhs.extract_string() == String::from("ip") {
-                                    Some(rhs.extract_string())
-                                } else {
-                                    None
-                                }
-                            } else {
-                                None
+                    let mut ip = None;
+                    if let Ok((kind, lhs, rhs)) = arg.expect_operator() {
+                        if kind == NodeKind::ASSIGN {
+                            if lhs.extract_string() == String::from("ip") {
+                                ip = Some(rhs.extract_string());
                             }
                         }
-                        _ => None,
-                    };
+                    }
+
                     if ip.is_some() {
                         t_ip = ip;
                         break;
