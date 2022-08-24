@@ -10,7 +10,7 @@ use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
 
 use crate::{
     args::Args,
-    config::{Config, ConfigFile},
+    config::Config,
     elliptic_curve::encryption::Encryption,
     gpsl::{
         self,
