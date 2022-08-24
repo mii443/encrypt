@@ -42,7 +42,7 @@ fn main() {
     }
 
     let r = encrypt_add(b);
-    
+
     println("復号します...");
     let result = decrypt(r);
     println("賛成者の合計は" + result + "です。");
