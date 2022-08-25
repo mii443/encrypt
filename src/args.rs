@@ -17,4 +17,7 @@ pub struct Args {
 
     #[clap(short, long, takes_value = false)]
     pub compile: bool,
+
+    #[clap(short, long, value_parser)]
+    pub curve: Option<String>,
 }

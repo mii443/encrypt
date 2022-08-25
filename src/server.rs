@@ -39,11 +39,23 @@ pub fn start_server(args: Args) {
         let functions: HashMap<String, Box<Node>> = serde_json::from_str(&buf).unwrap();
         debug!("Received: {:?}", functions);
 
+        let encryption = if let Some(curve) = args.curve.clone() {
+            if curve == "pairing".to_string() {
+                Encryption::pairing_friendly()
+            } else {
+                panic!("Unknown curve: {}", curve);
+            }
+        } else {
+            Encryption::secp256k1()
+        };
+
         let mut gpsl = GPSL::new(
             Some(functions),
             Some(HashMap::new()),
             Some(HashMap::new()),
-            Encryption::secp256k1(),
+            encryption,
+            None,
+            None,
             None,
             None,
             vec![STD_FUNC],

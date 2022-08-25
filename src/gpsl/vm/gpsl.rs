@@ -31,7 +31,9 @@ pub struct GPSL {
     pub servers: Option<HashMap<String, Arc<Mutex<TcpStream>>>>,
     pub encryption: Encryption,
     pub private_key: Option<U512>,
+    pub private_key2: Option<U512>,
     pub public_key: Option<EllipticCurvePoint>,
+    pub public_key2: Option<EllipticCurvePoint>,
     pub global_variables: Vec<Variable>,
     pub blocks: VecDeque<Block>,
     pub external_func: Vec<
@@ -76,7 +78,9 @@ impl GPSL {
         servers: Option<HashMap<String, Arc<Mutex<TcpStream>>>>,
         encryption: Encryption,
         private_key: Option<U512>,
+        private_key2: Option<U512>,
         public_key: Option<EllipticCurvePoint>,
+        public_key2: Option<EllipticCurvePoint>,
         external_func: Vec<
             fn(
                 String,
@@ -93,7 +97,9 @@ impl GPSL {
             servers,
             encryption,
             private_key,
+            private_key2,
             public_key,
+            public_key2,
             global_variables: vec![],
             blocks: VecDeque::new(),
             external_func,
@@ -295,7 +301,9 @@ impl GPSL {
                         ExternalFunctionCallData {
                             encryption: self.encryption.clone(),
                             private_key: self.private_key,
+                            private_key2: self.private_key2,
                             public_key: self.public_key,
+                            public_key2: self.public_key2,
                         },
                     );
                     if res.status == ExternalFuncStatus::SUCCESS {
@@ -434,6 +442,10 @@ impl GPSL {
                                     }
                                     Variable::U512 { value: rhs } => {
                                         Ok(Some(Variable::PureEncrypted { value: lhs * rhs }))
+                                    }
+                                    Variable::PureEncrypted { value: rhs } => {
+                                        let (a, b, c, d) = self.encryption.pair_multiply(lhs, rhs);
+                                        Ok(Some(Variable::PairedEncrypted { a, b, c, d }))
                                     }
                                     _ => Err("Cannot multiply non-number to ppe.".to_string()),
                                 },

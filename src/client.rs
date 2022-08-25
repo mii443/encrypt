@@ -133,9 +133,17 @@ pub fn start_client(args: Args) {
         servers.insert(ip, Arc::new(Mutex::new(stream)));
     }
 
-    let encryption = Encryption::secp256k1();
+    let encryption = if let Some(curve) = args.curve {
+        if curve == String::from("pairing") {
+            Encryption::pairing_friendly()
+        } else {
+            panic!("Unknown curve");
+        }
+    } else {
+        Encryption::secp256k1()
+    };
 
-    let config = Config::read_or_create();
+    let config = Config::read_or_create(Some(encryption.clone()));
 
     let mut gpsl = GPSL::new(
         Some(functions),
@@ -143,7 +151,9 @@ pub fn start_client(args: Args) {
         Some(servers),
         encryption.clone(),
         config.private_key,
+        config.private_key2,
         config.public_key,
+        config.public_key2,
         vec![STD_FUNC],
     );
     let res = gpsl.run("main".to_string(), HashMap::new());

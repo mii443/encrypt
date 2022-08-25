@@ -22,7 +22,10 @@ pub enum Variable {
         value: EncryptedEllipticCurvePoint,
     },
     PairedEncrypted {
-        value: FiniteFieldElement,
+        a: FiniteFieldElement,
+        b: FiniteFieldElement,
+        c: FiniteFieldElement,
+        d: FiniteFieldElement,
     },
     U512 {
         value: U512,
@@ -60,7 +63,10 @@ impl Variable {
             Variable::Text { value } => Some(value.clone()),
             Variable::Number { value } => Some(value.to_string()),
             Variable::PureEncrypted { value } => Some(value.to_string()),
-            Variable::PairedEncrypted { value } => Some(value.to_string()),
+            Variable::PairedEncrypted { a, b, c, d } => Some(format!(
+                "{:x}{:x}{:x}{:x}",
+                a.value, b.value, c.value, d.value
+            )),
             Variable::U512 { value } => Some(value.to_string()),
             Variable::Vec { value, .. } => {
                 let mut result = String::new();

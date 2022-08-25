@@ -25,7 +25,9 @@ pub struct ExternalFuncReturn {
 pub struct ExternalFunctionCallData {
     pub encryption: Encryption,
     pub private_key: Option<U512>,
+    pub private_key2: Option<U512>,
     pub public_key: Option<EllipticCurvePoint>,
+    pub public_key2: Option<EllipticCurvePoint>,
 }
 
 #[allow(dead_code)]
@@ -135,6 +137,20 @@ pub const STD_FUNC: fn(
                 value: Some(Variable::PureEncrypted { value: eep }),
             }
         }
+        "encrypt2" => {
+            let encryption = data.encryption;
+            let plain = match args[0] {
+                Variable::Number { value } => U512::from(value),
+                Variable::U512 { value } => value,
+                _ => panic!("encrypt: first argument must be a number"),
+            };
+            let ec = encryption.plain_to_ec_point_sub(plain);
+            let eep = encryption.encrypt(ec, data.public_key.unwrap(), None);
+            ExternalFuncReturn {
+                status: ExternalFuncStatus::SUCCESS,
+                value: Some(Variable::PureEncrypted { value: eep }),
+            }
+        }
         "decrypt" => {
             let encryption = data.encryption;
             let eep = match args[0] {
@@ -148,6 +164,27 @@ pub const STD_FUNC: fn(
                 value: Some(Variable::Number {
                     value: plain.as_u64() as i64,
                 }),
+            }
+        }
+        "decrypt_pair" => {
+            let encryption = data.encryption;
+            let (a, b, c, d) = match args[0] {
+                Variable::PairedEncrypted { a, b, c, d } => (a, b, c, d),
+                _ => panic!("decrypt: first argument must be a pure encrypted point"),
+            };
+
+            let plain = encryption.decrypt_pair(
+                a,
+                b,
+                c,
+                d,
+                data.private_key.unwrap(),
+                data.private_key2.unwrap(),
+            );
+
+            ExternalFuncReturn {
+                status: ExternalFuncStatus::SUCCESS,
+                value: Some(Variable::U512 { value: plain }),
             }
         }
         "to_num" => {
@@ -219,7 +256,9 @@ pub const STD_FUNC: fn(
                     Variable::Number { value } => println!("{}", value),
                     Variable::U512 { value } => println!("{:x}", value),
                     Variable::PureEncrypted { value } => println!("{}", value),
-                    Variable::PairedEncrypted { value } => println!("{:x}", value.value),
+                    Variable::PairedEncrypted { a, b, c, d } => {
+                        println!("{:x}{:x}{:x}{:x}", a.value, b.value, c.value, d.value)
+                    }
                     Variable::Vec { value, gpsl_type } => {
                         STD_FUNC(
                             "print".to_string(),
@@ -232,7 +271,9 @@ pub const STD_FUNC: fn(
                             ExternalFunctionCallData {
                                 encryption: data.encryption.clone(),
                                 private_key: data.private_key.clone(),
+                                private_key2: data.private_key2.clone(),
                                 public_key: data.public_key.clone(),
+                                public_key2: data.public_key2.clone(),
                             },
                         );
                         println!("");
@@ -257,7 +298,9 @@ pub const STD_FUNC: fn(
                     Variable::Number { value } => print!("{}", value),
                     Variable::U512 { value } => print!("{:x}", value),
                     Variable::PureEncrypted { value } => print!("{}", value),
-                    Variable::PairedEncrypted { value } => print!("{:x}", value.value),
+                    Variable::PairedEncrypted { a, b, c, d } => {
+                        print!("{:x}{:x}{:x}{:x}", a.value, b.value, c.value, d.value)
+                    }
                     Variable::Vec { value, .. } => {
                         print!("[");
                         let mut f = false;
@@ -275,7 +318,9 @@ pub const STD_FUNC: fn(
                                 ExternalFunctionCallData {
                                     encryption: data.encryption.clone(),
                                     private_key: data.private_key,
+                                    private_key2: data.private_key2,
                                     public_key: data.public_key,
+                                    public_key2: data.public_key2,
                                 },
                             );
                         }

@@ -14,7 +14,9 @@ use crate::elliptic_curve::encryption::Encryption;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConfigFile {
     pub private_key: Option<String>,
+    pub private_key2: Option<String>,
     pub public_key: Option<String>,
+    pub public_key2: Option<String>,
 }
 
 impl ConfigFile {
@@ -22,6 +24,16 @@ impl ConfigFile {
         let private_key = {
             if let Some(private_key) = config.private_key {
                 let s = private_key.to_string();
+                let encode = base64::encode(&s);
+                Some(encode)
+            } else {
+                None
+            }
+        };
+
+        let private_key2 = {
+            if let Some(private_key2) = config.private_key2 {
+                let s = private_key2.to_string();
                 let encode = base64::encode(&s);
                 Some(encode)
             } else {
@@ -39,9 +51,21 @@ impl ConfigFile {
             }
         };
 
+        let public_key2 = {
+            if let Some(public_key2) = config.public_key2 {
+                let s = serde_json::to_string(&public_key2).unwrap();
+                let encode = base64::encode(&s);
+                Some(encode)
+            } else {
+                None
+            }
+        };
+
         Self {
             private_key,
+            private_key2,
             public_key,
+            public_key2,
         }
     }
 }
@@ -49,19 +73,24 @@ impl ConfigFile {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
     pub private_key: Option<U512>,
+    pub private_key2: Option<U512>,
     pub public_key: Option<EllipticCurvePoint>,
+    pub public_key2: Option<EllipticCurvePoint>,
 }
 
 impl Config {
-    pub fn read_or_create() -> Self {
-        let encryption = Encryption::secp256k1();
+    pub fn read_or_create(encryption: Option<Encryption>) -> Self {
+        let encryption = encryption.unwrap_or(Encryption::secp256k1());
         if Path::new("gpsl_conf").exists() {
             Config::from_file("gpsl_conf")
         } else {
             let private_key = Encryption::get_private_key();
+            let private_key2 = Encryption::get_private_key();
             let config = Config {
                 private_key: Some(private_key),
+                private_key2: Some(private_key2),
                 public_key: Some(encryption.get_public_key(private_key)),
+                public_key2: Some(encryption.get_public_key(private_key2)),
             };
 
             let mut file = File::create("gpsl_conf").unwrap();
@@ -99,6 +128,16 @@ impl Config {
             }
         };
 
+        let private_key2 = {
+            if let Some(private_key2) = config.private_key2 {
+                let decoded = base64::decode(&private_key2).unwrap();
+                let s = std::str::from_utf8(&decoded).unwrap();
+                Some(U512::from_str_radix(s, 10).unwrap())
+            } else {
+                None
+            }
+        };
+
         let public_key = {
             if let Some(public_key) = config.public_key {
                 let decoded = base64::decode(&public_key).unwrap();
@@ -110,9 +149,22 @@ impl Config {
             }
         };
 
+        let public_key2 = {
+            if let Some(public_key2) = config.public_key2 {
+                let decoded = base64::decode(&public_key2).unwrap();
+                let s = std::str::from_utf8(&decoded).unwrap();
+                let r = EllipticCurvePoint::from_str(s).unwrap();
+                Some(r)
+            } else {
+                None
+            }
+        };
+
         Config {
             private_key,
+            private_key2,
             public_key,
+            public_key2,
         }
     }
 }

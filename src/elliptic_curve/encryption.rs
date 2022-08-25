@@ -20,6 +20,8 @@ use super::elliptic_curve::{EllipticCurve, EllipticCurvePoint};
 pub struct Encryption {
     pub ellictic_curve: EllipticCurve,
     pub base_point: EllipticCurvePoint,
+    pub base_point2: Option<EllipticCurvePoint>,
+    pub r: Option<U512>,
     pub order: FiniteFieldElement,
     pub plain_mapping: Vec<EllipticCurvePoint>,
 }
@@ -94,6 +96,52 @@ impl Mul<U512> for EncryptedEllipticCurvePoint {
 }
 
 impl Encryption {
+    pub fn pair_multiply(
+        &self,
+        p: EncryptedEllipticCurvePoint,
+        q: EncryptedEllipticCurvePoint,
+    ) -> (
+        FiniteFieldElement,
+        FiniteFieldElement,
+        FiniteFieldElement,
+        FiniteFieldElement,
+    ) {
+        let r = self.r.unwrap();
+        let a = EllipticCurvePoint::weil(p.data, q.data, r);
+        let b = EllipticCurvePoint::weil(p.data, q.rp, r);
+        let c = EllipticCurvePoint::weil(p.rp, q.data, r);
+        let d = EllipticCurvePoint::weil(p.rp, q.rp, r);
+
+        (a, b, c, d)
+    }
+
+    pub fn decrypt_pair(
+        &self,
+        a: FiniteFieldElement,
+        b: FiniteFieldElement,
+        c: FiniteFieldElement,
+        d: FiniteFieldElement,
+        private_key: U512,
+        private_key2: U512,
+    ) -> U512 {
+        let f =
+            EllipticCurvePoint::weil(self.base_point, self.base_point2.unwrap(), self.r.unwrap());
+        let dec =
+            a * d.pow(private_key * private_key2) / b.pow(private_key2) / c.pow(private_key) * f;
+
+        let mut i = U512::one();
+        let mut b = f;
+        while b != dec {
+            b = b * f;
+            i += U512::one();
+        }
+        if i < U512::from(7u8) {
+            i
+        } else {
+            U512::zero()
+        }
+    }
+
     pub fn secp256k1() -> Self {
         let p = U512::from_str_radix(
             "115792089237316195423570985008687907853269984665640564039457584007908834671663",
@@ -135,7 +183,45 @@ impl Encryption {
         Self {
             ellictic_curve: ec,
             base_point: ec.point(secp256_k1_base_x, secp256_k1_base_y),
+            base_point2: None,
+            r: None,
             order: secp256_k1_order,
+            plain_mapping: vec![],
+        }
+    }
+
+    pub fn pairing_friendly() -> Self {
+        let p = U512::from_str_radix("1009", 10).unwrap();
+        let ec_a = FiniteFieldElement::new(U512::from(37u8), p);
+        let ec_b = FiniteFieldElement::new(U512::from_str_radix("0", 10).unwrap(), p);
+        let pp = {
+            let x = FiniteFieldElement::new(U512::from_str_radix("417", 10).unwrap(), p);
+            let y = FiniteFieldElement::new(U512::from_str_radix("952", 10).unwrap(), p);
+            EllipticCurvePoint::Point {
+                x,
+                y,
+                a: ec_a,
+                b: ec_b,
+            }
+        };
+        let pd = {
+            let x = FiniteFieldElement::new(U512::from_str_radix("561", 10).unwrap(), p);
+            let y = FiniteFieldElement::new(U512::from_str_radix("153", 10).unwrap(), p);
+            EllipticCurvePoint::Point {
+                x,
+                y,
+                a: ec_a,
+                b: ec_b,
+            }
+        };
+        let ec = EllipticCurve { a: ec_a, b: ec_b };
+
+        Self {
+            ellictic_curve: ec,
+            base_point: pp,
+            base_point2: Some(pd),
+            r: Some(U512::from(7u8)),
+            order: FiniteFieldElement::new(U512::from_str_radix("7", 10).unwrap(), p),
             plain_mapping: vec![],
         }
     }
@@ -217,6 +303,14 @@ impl Encryption {
         }
 
         return self.base_point * m;
+    }
+
+    pub fn plain_to_ec_point_sub(&self, m: U512) -> EllipticCurvePoint {
+        if m == U512::from(0u8) {
+            return EllipticCurvePoint::Infinity;
+        }
+
+        return self.base_point2.unwrap() * m;
     }
 
     pub fn decrypt(ecc_p: EncryptedEllipticCurvePoint, private_key: U512) -> EllipticCurvePoint {
