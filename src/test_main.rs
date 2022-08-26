@@ -5,7 +5,12 @@
 [Mod(4767914906170010398, 6139062703770505681), Mod(2445476831433994309, 6139062703770505681)]]]
  */
 
-fn o_main() {
+use encrypt::{
+    common::finite_field::FiniteFieldElement, elliptic_curve::elliptic_curve::EllipticCurvePoint,
+};
+use primitive_types::U512;
+
+fn main() {
     let p = U512::from_str_radix("1009", 10).unwrap();
 
     let secp256_k1_a = FiniteFieldElement::new(U512::from(37u8), p);
@@ -45,8 +50,8 @@ fn o_main() {
     let ra = U512::from_str_radix("20", 10).unwrap();
     let rad = U512::from_str_radix("26", 10).unwrap();
 
-    let m = U512::from_str_radix("2", 10).unwrap();
-    let md = U512::from_str_radix("2", 10).unwrap();
+    let m = U512::from_str_radix("1", 10).unwrap();
+    let md = U512::from_str_radix("0", 10).unwrap();
 
     let s1 = pp * m + q * ra;
     let t1 = pp * ra;

@@ -1,14 +1,7 @@
-mod args;
-mod client;
-mod common;
-mod config;
-mod elliptic_curve;
-mod gpsl;
-mod server;
-use args::Args;
 use clap::Parser;
-use client::start_client;
-use server::start_server;
+use encryptlib::args::Args;
+use encryptlib::client::start_client;
+use encryptlib::server::start_server;
 use std::env;
 
 fn main() {

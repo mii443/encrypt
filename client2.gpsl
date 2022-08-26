@@ -1,5 +1,5 @@
 fn main() {
-    let a = encrypt(3);
+    let a = encrypt(1);
     let b = encrypt2(2);
     println(decrypt_pair(a * b));
 }
