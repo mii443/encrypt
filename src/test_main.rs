@@ -41,7 +41,7 @@ fn main() {
 
     let f = EllipticCurvePoint::weil(pp, pd, r);
 
-    let s = U512::from(10u8);
+    let s = U512::from(10u64);
     let sd = U512::from(5u8);
 
     let q = pp * s;
@@ -50,8 +50,8 @@ fn main() {
     let ra = U512::from_str_radix("20", 10).unwrap();
     let rad = U512::from_str_radix("26", 10).unwrap();
 
-    let m = U512::from_str_radix("1", 10).unwrap();
-    let md = U512::from_str_radix("0", 10).unwrap();
+    let m = U512::from_str_radix("2", 10).unwrap();
+    let md = U512::from_str_radix("3", 10).unwrap();
 
     let s1 = pp * m + q * ra;
     let t1 = pp * ra;

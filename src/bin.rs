@@ -1,7 +1,7 @@
 use clap::Parser;
-use encryptlib::args::Args;
-use encryptlib::client::start_client;
-use encryptlib::server::start_server;
+use encrypt::args::Args;
+use encrypt::client::start_client;
+use encrypt::server::start_server;
 use std::env;
 
 fn main() {

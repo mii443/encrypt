@@ -1,5 +1,7 @@
 fn main() {
-    let a = encrypt(1);
-    let b = encrypt2(2);
-    println(decrypt_pair(a * b));
+    let t: Vec<String> = vec("");
+    t[0] = "test";
+    t = push(t, "test2");
+    println(decrypt(a + b));
+    println(t[0] + t[1]);
 }
