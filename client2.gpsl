@@ -2,4 +2,7 @@ fn main() {
     let users: Vec<String> = vec("");
     let tmp: Vec<eep> = vec(encrypt(0));
     let polls: Vec<Vec<eep>> = vec(tmp);
+
+    write_value("users.gvalue", users);
+    write_value("polls.gvalue", polls);
 }
