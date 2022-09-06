@@ -13,6 +13,31 @@ fn init_gvalue() {
     write_value("./data/poll.gvalue", poll);
 }
 
+fn add_poll() {
+    let user = read_value("./data/user.gvalue");
+    let poll = read_value("./data/poll.gvalue");
+
+    let users = read_value("./data/users.gvalue");
+    let polls = read_value("./data/polls.gvalue");
+
+    if (users[0] == "") {
+        users[0] = user;
+    } else {
+        users = push(users, user);
+        let tmp_e: Vec<eep> = vec(encrypt(0));
+        tmp_e[0] = encrypt(poll[0]);
+
+        for (let i = 1; i < length(poll); i += 1) {
+            tmp_e = push(tmp_e, encrypt(poll[i]));
+        }
+
+        polls = push(polls, tmp_e);
+    }
+
+    println(users);
+    println(polls);
+}
+
 fn main() {
-    init_gvalue();
+    add_poll();
 }
