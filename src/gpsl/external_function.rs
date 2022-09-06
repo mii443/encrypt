@@ -1,6 +1,6 @@
 use primitive_types::U512;
 use serde::{Deserialize, Serialize};
-use std::io::{stdout, Write};
+use std::{io::{stdout, Write, Read}, fs};
 
 use crate::{
     elliptic_curve::{elliptic_curve::EllipticCurvePoint, encryption::Encryption},
@@ -40,6 +40,34 @@ pub const STD_FUNC: fn(
 ) -> ExternalFuncReturn = |name, args, accept, reject, data| {
     let name = name.as_str();
     match name {
+        "read_value" => {
+            let file_name = args[0].clone();
+            let mut file = fs::File::open(file_name.extract_text().unwrap()).unwrap();
+            let mut contents = String::default();
+            file.read_to_string(&mut contents).unwrap();
+            ExternalFuncReturn {
+                status: ExternalFuncStatus::SUCCESS,
+                value: Some(serde_json::from_str(&contents).unwrap()),
+            }
+        }
+        "write_value" => {
+            if !accept.contains(&Permission::FileWrite) || reject.contains(&Permission::FileWrite) {
+                return ExternalFuncReturn {
+                    status: ExternalFuncStatus::REJECTED,
+                    value: None,
+                };
+            }
+            let file_name = args[0].clone();
+            let content = args[1].clone();
+            let mut file =
+                std::fs::File::create(file_name.extract_text().unwrap().as_str()).unwrap();
+            file.write_all(serde_json::to_string(&content).unwrap().as_bytes())
+                .unwrap();
+            ExternalFuncReturn {
+                status: ExternalFuncStatus::SUCCESS,
+                value: None,
+            }
+        }
         "write" => {
             if !accept.contains(&Permission::FileWrite) || reject.contains(&Permission::FileWrite) {
                 return ExternalFuncReturn {
@@ -106,6 +134,7 @@ pub const STD_FUNC: fn(
                 if arg.get_type() == typ.to_str() {
                     vec.push(arg);
                 } else {
+                    println!("{} != {}", arg.get_type(), typ.to_str());
                     return ExternalFuncReturn {
                         status: ExternalFuncStatus::ERROR,
                         value: None,

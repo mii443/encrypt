@@ -1,7 +1,5 @@
 fn main() {
-    let t: Vec<String> = vec("");
-    t[0] = "test";
-    t = push(t, "test2");
-    println(decrypt(a + b));
-    println(t[0] + t[1]);
+    let users: Vec<String> = vec("");
+    let tmp: Vec<eep> = vec(encrypt(0));
+    let polls: Vec<Vec<eep>> = vec(tmp);
 }
