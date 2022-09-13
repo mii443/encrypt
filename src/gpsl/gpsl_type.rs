@@ -35,7 +35,7 @@ impl GPSLType {
         let mut main = String::new();
         let mut read_count = 0;
         for x in s.chars() {
-            if !x.is_alphabetic() && x != '<' && x != '>' && x != ',' {
+            if !x.is_alphanumeric() && x != '<' && x != '>' && x != ',' {
                 return Err(format!("Invalid character: {}", x));
             }
             if x != '<' && x != '>' && x != ',' {

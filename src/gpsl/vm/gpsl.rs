@@ -328,7 +328,7 @@ impl GPSL {
                         match *(lhs.clone()) {
                             Node::Lvar { value, index } => {
                                 if let Some(index) = index {
-                                    let mut val =
+                                    let val =
                                         self.get_local_var_mut(&value).unwrap().value.clone();
                                     match val {
                                         Some(Variable::Vec {
@@ -544,7 +544,7 @@ impl GPSL {
                 if let Some(index) = index {
                     let val = self.get_local_var_mut(&value).unwrap().clone();
                     match val.value {
-                        Some(Variable::Vec { value, gpsl_type }) => {
+                        Some(Variable::Vec { value, .. }) => {
                             return Ok(Some(
                                 value[self
                                     .evaluate(index)

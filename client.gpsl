@@ -1,4 +1,4 @@
-#[server(ip = "localhost:8080")]
+#[server(ip = "172.25.5.189:8080")]
 fn encrypt_add(a: Vec<eep>) $(accept[StdOut]) {
     println("");
     println("集計開始");
@@ -45,7 +45,7 @@ fn main() {
 
     println("復号します...");
     let result = decrypt(r);
-    println("賛成者の合計は" + result + "です。");
+    println("賛成の合計は" + result + "です。");
     write("result.txt", result);
 }
 
