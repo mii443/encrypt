@@ -1,0 +1,30 @@
+#[server(ip = "172.25.5.189:8080")]
+fn sum_polls(users: Vec<String>, polls: Vec<Vec<eep>>) {
+    let n = length(users);
+    let result: Vec<eep> = polls[0];
+    for(let i = 1; i < n; i += 1) {
+        println(polls[i]);
+        let c = length(polls[i]);
+        for (let j = 0; j < c; j += 1) {
+            let p = polls[i];
+            result[j] = result[j] + p[j];
+        }
+    }
+
+    return result;
+}
+
+fn main() {
+    let polls = read_value("./data/polls.gvalue");
+    let users = read_value("./data/users.gvalue");
+    let result = sum_polls(users, polls);
+    let n = length(result);
+
+    let r = "";
+
+    for (let i = 0; i < n; i += 1) {
+        r = r + decrypt(result[i]) + " ";
+    }
+    println(r);
+    write("./data/result", r);
+}
